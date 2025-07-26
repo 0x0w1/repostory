@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv run:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(grep:*)",
+      "Bash(mkdir:*)",
+      "Bash(export MPLBACKEND=Agg)"
+    ],
+    "deny": []
+  }
+}
