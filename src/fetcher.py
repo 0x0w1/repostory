@@ -73,7 +73,7 @@ def generate_history_json(repo_urls: List[str], output_file: str = "repository_h
     print(f"Generated {output_file} with {len(history_data['projects'])} projects")
 
 
-def generate_readme(trends_file: str = "python_web_framework_trends.json", output_file: str = "README.md") -> None:
+def generate_readme(trends_file: str = "repository_histories.json", output_file: str = "README.md") -> None:
     """Generate README.md file from trends data."""
     if not os.path.exists(trends_file):
         raise FileNotFoundError(f"Trends file '{trends_file}' not found")
