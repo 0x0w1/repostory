@@ -23,7 +23,7 @@ def load_repository_urls(filename: str = "list.txt") -> List[str]:
         raise FileNotFoundError(f"File '{filename}' not found")
 
 
-def generate_history_json(repo_urls: List[str], output_file: str = "python_web_framework_trends.json") -> None:
+def generate_history_json(repo_urls: List[str], output_file: str = "repository_histories.json") -> None:
     """Generate aggregated history JSON from individual repository files."""
     history_data = {"projects": {}}
 
