@@ -1,31 +1,129 @@
 #!/usr/bin/env python3
 """
-Framework Trends Aggregator
+Framework Stars Fetcher and README Generator
 
-Reads individual {owner}_{repo}.json files and generates aggregated trends data and README.
+Fetches current repository data from GitHub API, updates local JSON files,
+and generates README with current rankings.
 """
 
 import json
 import os
 from datetime import datetime
-from typing import List
+from typing import Dict, List, Optional, Tuple
+
+import requests
 
 
-def load_repository_urls(filename: str = "list.txt") -> List[str]:
-    """Load repository URLs from file."""
+def load_repositories_config(filename: str = "repositories.json") -> Tuple[str, List[str]]:
+    """Load repository configuration from JSON file."""
     try:
-        with open(filename, "r") as f:
-            urls = [url.strip() for url in f.readlines() if url.strip()]
-            if not urls:
-                raise ValueError("Repository list is empty")
-            return urls
+        with open(filename, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # Get the first key as category name and its URLs
+        if not data:
+            raise ValueError("Repository configuration is empty")
+
+        category = list(data.keys())[0]
+        urls = data[category]
+
+        if not urls:
+            raise ValueError(f"Repository list for '{category}' is empty")
+
+        return category, urls
+
     except FileNotFoundError:
         raise FileNotFoundError(f"File '{filename}' not found")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON format in '{filename}': {e}")
 
 
-def generate_history_json(repo_urls: List[str], output_file: str = "repository_histories.json") -> None:
-    """Generate aggregated history JSON from individual repository files."""
-    history_data = {"projects": {}}
+def get_github_token() -> Optional[str]:
+    """Get GitHub token from environment or file."""
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        return token
+    try:
+        with open("access_token.txt", "r") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return None
+
+
+def get_repository_data(owner: str, repo: str, token: Optional[str] = None) -> Optional[Dict]:
+    """Get complete repository data from GitHub API."""
+    url = f"https://api.github.com/repos/{owner}/{repo}"
+    headers = {"User-Agent": "Python-Framework-Tracker"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+
+        return {
+            "name": repo,
+            "html_url": data.get("html_url", ""),
+            "stars": data.get("stargazers_count", 0),
+            "forks": data.get("forks_count", 0),
+            "open_issues": data.get("open_issues_count", 0),
+            "last_commit": data.get("pushed_at", ""),
+            "fetched_at": datetime.now().isoformat(),
+        }
+
+    except requests.exceptions.RequestException as e:
+        print(f"Warning: Failed to fetch data for {owner}/{repo}: {e}")
+        return None
+
+
+def update_repo_data_file(owner: str, repo: str, current_data: Dict) -> None:
+    """Update repository data file with current stars difference."""
+    repo_file = f"repo_data/{owner}_{repo}.json"
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    if not os.path.exists(repo_file):
+        print(f"Skipping {owner}/{repo}: No existing data file")
+        return
+
+    try:
+        # Load existing data
+        with open(repo_file, "r", encoding="utf-8") as f:
+            repo_data = json.load(f)
+
+        # Calculate star difference
+        previous_stars = repo_data.get("total_stars", 0)
+        current_stars = current_data["stars"]
+        star_diff = current_stars - previous_stars
+
+        # Update stars_by_date if there's a difference
+        if star_diff != 0:
+            if "stars_by_date" not in repo_data:
+                repo_data["stars_by_date"] = {}
+
+            repo_data["stars_by_date"][today] = star_diff
+            repo_data["total_stars"] = current_stars
+            repo_data["fetched_at"] = current_data["fetched_at"]
+
+            # Save updated data
+            with open(repo_file, "w", encoding="utf-8") as f:
+                json.dump(repo_data, f, ensure_ascii=False, separators=(",", ":"))
+
+            print(f"Updated {owner}/{repo}: {previous_stars} -> {current_stars} (+{star_diff})")
+        else:
+            print(f"No change for {owner}/{repo}: {current_stars} stars")
+
+    except Exception as e:
+        print(f"Failed to update {owner}/{repo}: {e}")
+
+
+def fetch_all_repository_data(repo_urls: List[str]) -> List[Dict]:
+    """Fetch current data for all repositories and update local files."""
+    token = get_github_token()
+    if not token:
+        print("Warning: No GitHub token found. API rate limits may apply.")
+
+    all_repo_data = []
 
     for url in repo_urls:
         try:
@@ -33,78 +131,36 @@ def generate_history_json(repo_urls: List[str], output_file: str = "repository_h
             repo_path = url.replace("https://github.com/", "")
             owner, repo = repo_path.split("/")
 
-            # Load individual repository data
-            repo_file = f"repo_data/{owner}_{repo}.json"
+            print(f"Fetching data for {owner}/{repo}...")
 
-            if not os.path.exists(repo_file):
-                print(f"Warning: {repo_file} not found, skipping...")
+            # Get current repository data from GitHub API
+            current_data = get_repository_data(owner, repo, token)
+            if not current_data:
                 continue
 
-            with open(repo_file, "r", encoding="utf-8") as f:
-                repo_data = json.load(f)
+            # Update local repo data file with star differences
+            update_repo_data_file(owner, repo, current_data)
 
-            # Create project entry if it doesn't exist
-            project_name = repo
-            if project_name not in history_data["projects"]:
-                history_data["projects"][project_name] = {"name": project_name, "html_url": url, "history": []}
-
-            # Add current data point to history
-            history_entry = {
-                "timestamp": repo_data.get("fetched_at", datetime.now().isoformat()),
-                "stars": repo_data.get("total_stars", 0),
-                "forks": repo_data.get("total_forks", 0),
-                "open_issues": 0,  # Not available in fetcher data
-                "last_commit": "",  # Not available in fetcher data
-            }
-
-            # Avoid duplicate entries by checking timestamp
-            existing_timestamps = [entry["timestamp"] for entry in history_data["projects"][project_name]["history"]]
-            if history_entry["timestamp"] not in existing_timestamps:
-                history_data["projects"][project_name]["history"].append(history_entry)
-                history_data["projects"][project_name]["history"].sort(key=lambda x: x["timestamp"])
+            # Add to results for README generation
+            all_repo_data.append(current_data)
 
         except Exception as e:
             print(f"Failed to process {url}: {e}")
             continue
 
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(history_data, f, indent=2, ensure_ascii=False)
-
-    print(f"Generated {output_file} with {len(history_data['projects'])} projects")
+    return all_repo_data
 
 
-def generate_readme(trends_file: str = "repository_histories.json", output_file: str = "README.md") -> None:
-    """Generate README.md file from trends data."""
-    if not os.path.exists(trends_file):
-        raise FileNotFoundError(f"Trends file '{trends_file}' not found")
-
-    with open(trends_file, "r", encoding="utf-8") as f:
-        trends_data = json.load(f)
-
-    # Get latest data for each project and sort by stars
-    projects = []
-    for project_name, project_data in trends_data["projects"].items():
-        if project_data["history"]:
-            latest = project_data["history"][-1]  # Get latest entry
-            projects.append(
-                {
-                    "name": project_name,
-                    "html_url": project_data["html_url"],
-                    "stars": latest["stars"],
-                    "forks": latest["forks"],
-                    "open_issues": latest["open_issues"],
-                    "last_commit": latest["last_commit"],
-                    "timestamp": latest["timestamp"],
-                }
-            )
-
+def generate_readme(category: str, repo_data: List[Dict], output_file: str = "README.md") -> None:
+    """Generate README.md file from repository data."""
     # Sort by stars (descending)
-    projects.sort(key=lambda p: p["stars"], reverse=True)
+    repo_data.sort(key=lambda x: x["stars"], reverse=True)
 
-    header = """# Top Python Web Frameworks
-A list of popular github projects related to Python web framework (ranked by stars automatically)
+    # Format category name for title
+    title = f"Public Repository History - {category.replace('-', ' ').title()}"
 
-* UPDATE **list.txt** (via Pull Request)
+    header = f"""# {title}
+A list of popular github projects related to {category.replace('-', ' ')} (ranked by stars automatically)
 
 ## 📈 Current Rankings
 
@@ -115,14 +171,14 @@ A list of popular github projects related to Python web framework (ranked by sta
         f.write("| Project Name | Stars | Forks | Open Issues | Last Commit |\n")
         f.write("| ------------ | ----- | ----- | ----------- | ----------- |\n")
 
-        for project in projects:
-            # Format timestamp if available
+        for project in repo_data:
+            # Format last commit date
             if project["last_commit"]:
                 try:
-                    commit_date = datetime.strptime(project["last_commit"], "%Y-%m-%dT%H:%M:%SZ").strftime(
+                    commit_date = datetime.fromisoformat(project["last_commit"].replace("Z", "+00:00")).strftime(
                         "%Y-%m-%d %H:%M:%S"
                     )
-                except ValueError:
+                except (ValueError, TypeError):
                     commit_date = "N/A"
             else:
                 commit_date = "N/A"
@@ -138,22 +194,29 @@ A list of popular github projects related to Python web framework (ranked by sta
         # Add footer
         timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
         f.write(f"\n*Last Automatic Update: {timestamp}*\n")
+        f.write("\n*Inspired by https://github.com/mingrammer/python-web-framework-stars*\n")
 
-    print(f"Generated {output_file}")
+    print(f"Generated {output_file} with {len(repo_data)} projects")
 
 
 def main():
     """Main execution function."""
     try:
-        # Load repository URLs
-        repo_urls = load_repository_urls()
-        print(f"Loaded {len(repo_urls)} repository URLs")
+        # Load repository configuration
+        category, repo_urls = load_repositories_config()
+        print(f"Loaded {len(repo_urls)} repository URLs for category: {category}")
 
-        # Generate aggregated trends JSON from individual repository files
-        generate_history_json(repo_urls)
+        # Fetch current data for all repositories
+        print("Fetching current repository data from GitHub...")
+        repo_data = fetch_all_repository_data(repo_urls)
 
-        # Generate README from trends data
-        generate_readme()
+        if not repo_data:
+            print("No repository data fetched. Exiting.")
+            return
+
+        # Generate README
+        print("Generating README...")
+        generate_readme(category, repo_data)
 
         print("All tasks completed successfully!")
 

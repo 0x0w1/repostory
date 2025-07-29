@@ -59,19 +59,14 @@ class GitHubFetcher:
             payload["variables"] = variables
 
         try:
-            response = requests.post(
-                self.graphql_url,
-                headers=self.headers,
-                json=payload,
-                verify=False
-            )
+            response = requests.post(self.graphql_url, headers=self.headers, json=payload, verify=False)
             response.raise_for_status()
-            
+
             result = response.json()
             if "errors" in result:
                 print(f"GraphQL errors: {result['errors']}")
                 return None
-            
+
             return result.get("data")
         except requests.exceptions.RequestException as e:
             print(f"Error executing query: {e}")
@@ -89,33 +84,31 @@ class GitHubFetcher:
           }
         }
         """
-        
+
         stargazers = []
         cursor = None
         page = 1
-        
+
         while True:
-            data = self.execute_query(query, {
-                "owner": owner, "name": repo, "cursor": cursor
-            })
-            
+            data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
+
             if not data or not data.get("repository"):
                 break
-            
+
             edges = data["repository"]["stargazers"]["edges"]
             if not edges:
                 break
-            
+
             stargazers.extend(edges)
             print(f"Fetched page {page}, total stargazers: {len(stargazers)}")
-            
+
             page_info = data["repository"]["stargazers"]["pageInfo"]
             if not page_info.get("hasNextPage"):
                 break
-            
+
             cursor = page_info.get("endCursor")
             page += 1
-        
+
         return stargazers
 
     def fetch_forks(self, owner, repo):
@@ -130,33 +123,31 @@ class GitHubFetcher:
           }
         }
         """
-        
+
         forks = []
         cursor = None
         page = 1
-        
+
         while True:
-            data = self.execute_query(query, {
-                "owner": owner, "name": repo, "cursor": cursor
-            })
-            
+            data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
+
             if not data or not data.get("repository"):
                 break
-            
+
             edges = data["repository"]["forks"]["edges"]
             if not edges:
                 break
-            
+
             forks.extend(edges)
             print(f"Fetched page {page}, total forks: {len(forks)}")
-            
+
             page_info = data["repository"]["forks"]["pageInfo"]
             if not page_info.get("hasNextPage"):
                 break
-            
+
             cursor = page_info.get("endCursor")
             page += 1
-        
+
         return forks
 
     @staticmethod
@@ -168,7 +159,7 @@ class GitHubFetcher:
                 date_str = item.get("starredAt")
             else:
                 date_str = item.get("node", {}).get("createdAt")
-            
+
             if date_str:
                 date_obj = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
                 date_key = date_obj.strftime("%Y-%m-%d")
@@ -194,9 +185,15 @@ def main():
         token = GitHubFetcher.get_token()
         if not token:
             sys.exit(1)
-        
+
         fetcher = GitHubFetcher(token)
         owner, repo = fetcher.parse_url(args.repo_url)
+
+        # Check if file already exists
+        output_filename = f"{args.output_dir}/{owner}_{repo}.json"
+        if os.path.exists(output_filename):
+            print(f"File {output_filename} already exists. Skipping...")
+            return
 
         print(f"Fetching data for {owner}/{repo} using GraphQL...")
 
@@ -214,7 +211,7 @@ def main():
         # Prepare output data
         total_stars = len(stargazers)
         total_forks = len(forks)
-        
+
         output_data = {
             "total_stars": total_stars,
             "fetched_at": datetime.now().isoformat(),
@@ -226,14 +223,15 @@ def main():
         }
 
         # Save data
-        output_filename = f"{args.output_dir}/{owner}_{repo}.json"
         fetcher.save_data(output_data, output_filename)
 
         # Print summary
         print(f"\nData saved to {output_filename}")
         print(f"Total stars fetched: {total_stars}")
         print(f"Total forks fetched: {total_forks}")
-        print(f"Equivalent pages - Stars: {output_data['last_stargazers_page']}, Forks: {output_data['last_forks_page']}")
+        print(
+            f"Equivalent pages - Stars: {output_data['last_stargazers_page']}, Forks: {output_data['last_forks_page']}"
+        )
 
     except Exception as e:
         print(f"Error: {e}")
