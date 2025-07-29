@@ -10,7 +10,10 @@
       "Bash(mv:*)",
       "Bash(grep:*)",
       "Bash(mkdir:*)",
-      "Bash(export MPLBACKEND=Agg)"
+      "Bash(export MPLBACKEND=Agg)",
+      "Bash(chmod:*)",
+      "Bash(timeout:*)",
+      "Bash(jq:*)"
     ],
     "deny": []
   }
