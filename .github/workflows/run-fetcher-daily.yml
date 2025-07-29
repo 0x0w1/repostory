@@ -1,4 +1,4 @@
-name: Update Repository Stars
+name: Run fetcher (daily)
 
 on:
   schedule:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch: # Allow manual trigger
 
 jobs:
-  update-readme:
+  update-data:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -28,24 +28,23 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Run framework stars update
+      - name: Run fetcher to update repository data and README
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MPLBACKEND: Agg
-        run: uv run get_current_framework_stars.py
+        run: |
+          echo "=== Running fetcher.py ==="
+          uv run python/fetcher.py
 
       - name: Debug file status
         run: |
           echo "=== Current directory contents ==="
           ls -la
-          echo "=== Charts directory contents ==="
-          ls -la charts/ || echo "charts directory not found"
+          echo "=== repo_data directory contents ==="
+          ls -la repo_data/ || echo "repo_data directory not found"
           echo "=== Git status ==="
           git status --porcelain
           echo "=== Checking specific files ==="
-          test -f framework_stars_history.json && echo "framework_stars_history.json exists" || echo "framework_stars_history.json missing"
-          test -f charts/stars_chart.jpg && echo "charts/stars_chart.jpg exists" || echo "charts/stars_chart.jpg missing"
-          test -f charts/forks_chart.jpg && echo "charts/forks_chart.jpg exists" || echo "charts/forks_chart.jpg missing"
+          test -f README.md && echo "README.md exists" || echo "README.md missing"
 
       - name: Check for changes
         id: verify-changed-files
@@ -61,7 +60,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add README.md framework_stars_history.json charts/
+          git add README.md repo_data/
           git diff --cached --name-only
-          git commit -m "Update framework stars - $(date +'%Y-%m-%d %H:%M:%S UTC')"
+          git commit -m "Update repository data and README - $(date +'%Y-%m-%d %H:%M:%S UTC')"
           git push origin main

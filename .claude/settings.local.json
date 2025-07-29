@@ -13,7 +13,10 @@
       "Bash(export MPLBACKEND=Agg)",
       "Bash(chmod:*)",
       "Bash(timeout:*)",
-      "Bash(jq:*)"
+      "Bash(jq:*)",
+      "Bash(sudo rm:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(yarn install)"
     ],
     "deny": []
   }
