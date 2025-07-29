@@ -1,0 +1,84 @@
+name: Update Repository Data (Manual)
+
+on:
+  workflow_dispatch: # Allow manual trigger only
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run repository data initializer
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== Running repo_data_initializer.py for all repositories ==="
+          # Read all repositories from repositories.json and run initializer for each
+          python3 -c "
+          import json
+          import subprocess
+          import sys
+
+          try:
+              with open('repositories.json', 'r') as f:
+                  data = json.load(f)
+              
+              for category, urls in data.items():
+                  print(f'Processing category: {category}')
+                  for url in urls:
+                      print(f'Running initializer for: {url}')
+                      result = subprocess.run(['uv', 'run', 'python/repo_data_initializer.py', url], 
+                                            capture_output=True, text=True)
+                      if result.returncode != 0:
+                          print(f'Error processing {url}: {result.stderr}')
+                      else:
+                          print(f'Successfully processed {url}')
+          except Exception as e:
+              print(f'Error: {e}')
+              sys.exit(1)
+          "
+
+      - name: Debug file status
+        run: |
+          echo "=== Current directory contents ==="
+          ls -la
+          echo "=== repo_data directory contents ==="
+          ls -la repo_data/ || echo "repo_data directory not found"
+          echo "=== Git status ==="
+          git status --porcelain
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add repo_data/
+          git diff --cached --name-only
+          git commit -m "Manual update repository data - $(date +'%Y-%m-%d %H:%M:%S UTC')"
+          git push origin main

@@ -17,7 +17,7 @@ This is a Python tool that automatically tracks and ranks popular Python web fra
 3. **Output Generation** (`fetcher.py`) - Aggregates history data, generates markdown table sorted by stars, and updates README.md.
 
 **Key Files**:
-- `list.txt` - Contains GitHub repository URLs to track (22 frameworks)
+- `repositories.json` - Contains GitHub repository URLs to track (22 frameworks) in JSON format
 - `repo_data/` - Individual JSON files per repository with daily star/fork counts
 - `repository_histories.json` - Aggregated time-series data for all frameworks
 - `README.md` - Auto-generated output with current rankings
@@ -48,8 +48,8 @@ uv run python/generate_history_from_repo_data.py
 # Generate README from aggregated data  
 uv run python/fetcher.py
 
-# Add new framework to track
-echo "https://github.com/owner/repo" >> list.txt
+# Add new framework to track (edit repositories.json)
+# Add URL to the "python-web-frameworks" array in repositories.json
 ```
 
 ## Dependencies & Requirements
@@ -100,6 +100,6 @@ echo "https://github.com/owner/repo" >> list.txt
 
 - **ModuleNotFoundError**: Run `uv sync` to install dependencies
 - **GitHub API Rate Limits**: Ensure `GITHUB_TOKEN` is set with valid token
-- **File Not Found**: `list.txt` must exist with repository URLs
+- **File Not Found**: `repositories.json` must exist with repository URLs
 - **Missing Charts**: Workflows expect `charts/` directory with generated chart images
 - No formal test suite exists - this is primarily a data collection tool
