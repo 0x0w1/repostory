@@ -17,6 +17,7 @@ This is a Python tool that automatically tracks and ranks popular Python web fra
 3. **Output Generation** (`fetcher.py`) - Aggregates history data, generates markdown table sorted by stars, and updates README.md.
 
 **Key Files**:
+
 - `repositories.json` - Contains GitHub repository URLs to track (22 frameworks) in JSON format
 - `repo_data/` - Individual JSON files per repository with daily star/fork counts
 - `repository_histories.json` - Aggregated time-series data for all frameworks
@@ -25,6 +26,7 @@ This is a Python tool that automatically tracks and ranks popular Python web fra
 ## Development Commands
 
 **Setup**:
+
 ```bash
 # Install UV package manager (required)
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -38,6 +40,7 @@ export GITHUB_TOKEN="your_token_here"
 ```
 
 **Core Operations**:
+
 ```bash
 # Fetch data for a single repository
 uv run python/repo_data_initializer.py https://github.com/django/django
@@ -45,11 +48,11 @@ uv run python/repo_data_initializer.py https://github.com/django/django
 # Generate aggregated history from repo data
 uv run python/generate_history_from_repo_data.py
 
-# Generate README from aggregated data  
+# Generate README from aggregated data
 uv run python/fetcher.py
 
 # Add new framework to track (edit repositories.json)
-# Add URL to the "python-web-frameworks" array in repositories.json
+# Add URL to the "repostory" array in repositories.json
 ```
 
 ## Dependencies & Requirements
@@ -62,27 +65,29 @@ uv run python/fetcher.py
 ## Data Structure
 
 **Repository Data Format** (`repo_data/*.json`):
+
 ```json
 {
   "total_stars": 84378,
   "fetched_at": "2025-07-28T23:40:55.409192",
-  "stars_by_date": {"2012-04-28": 3772, "2012-04-29": 4},
-  "forks_by_date": {"2012-04-28": 145, "2012-04-29": 2}
+  "stars_by_date": { "2012-04-28": 3772, "2012-04-29": 4 },
+  "forks_by_date": { "2012-04-28": 145, "2012-04-29": 2 }
 }
 ```
 
 **Aggregated History Format** (`repository_histories.json`):
+
 ```json
 {
   "metadata": {
     "first_recorded": "timestamp",
-    "last_updated": "timestamp", 
+    "last_updated": "timestamp",
     "total_snapshots": number
   },
   "projects": {
     "framework_name": {
       "name": "string",
-      "html_url": "string", 
+      "html_url": "string",
       "history": [{"timestamp": "ISO8601", "stars": number, "forks": number}]
     }
   }
@@ -91,7 +96,8 @@ uv run python/fetcher.py
 
 ## Automation
 
-**GitHub Actions**: 
+**GitHub Actions**:
+
 - `.github/workflows/update-repository-stars.yml` - Daily updates at 00:00 UTC
 - `.github/workflows/update-manually.yml` - Manual trigger support
 - Both auto-commit changes with timestamps
