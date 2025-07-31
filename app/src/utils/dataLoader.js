@@ -1,68 +1,101 @@
 export const loadRepositoryData = async () => {
   try {
-    const response = await fetch('../repo_data/');
-    const text = await response.text();
+    const repositoriesResponse = await fetch('https://raw.githubusercontent.com/0x0w1/repostory/refs/heads/develop/repositories.json');
+    const repositoriesConfig = await repositoriesResponse.json();
     
-    const fileNames = [];
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(text, 'text/html');
-    const links = doc.querySelectorAll('a[href$=".json"]');
+    const repositoriesByCategory = {};
     
-    links.forEach(link => {
-      const href = link.getAttribute('href');
-      if (href && href.endsWith('.json')) {
-        fileNames.push(href);
+    for (const [category, urls] of Object.entries(repositoriesConfig)) {
+      repositoriesByCategory[category] = [];
+      
+      for (const url of urls) {
+        try {
+          const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+          if (match) {
+            const [, owner, repo] = match;
+            const fileName = `${owner}_${repo}.json`;
+            const dataUrl = `https://raw.githubusercontent.com/0x0w1/repostory/refs/heads/develop/repo_data/${fileName}`;
+            
+            const response = await fetch(dataUrl);
+            const data = await response.json();
+            
+            repositoriesByCategory[category].push({
+              name: `${owner}/${repo}`,
+              fileName: fileName,
+              totalStars: data.total_stars,
+              fetchedAt: data.fetched_at,
+              starsByDate: data.stars_by_date || {},
+              forksByDate: data.forks_by_date || {},
+              category: category,
+              url: url
+            });
+          }
+        } catch (error) {
+          console.warn(`Failed to load data for ${url}:`, error);
+        }
       }
-    });
-
-    const repositories = [];
-    
-    for (const fileName of fileNames) {
-      try {
-        const response = await fetch(`../repo_data/${fileName}`);
-        const data = await response.json();
-        
-        const repoName = fileName.replace('.json', '').replace(/_/g, '/');
-        
-        repositories.push({
-          name: repoName,
-          fileName: fileName,
-          totalStars: data.total_stars,
-          fetchedAt: data.fetched_at,
-          starsByDate: data.stars_by_date || {},
-          forksByDate: data.forks_by_date || {}
-        });
-      } catch (error) {
-        console.warn(`Failed to load ${fileName}:`, error);
-      }
+      
+      repositoriesByCategory[category].sort((a, b) => b.totalStars - a.totalStars);
     }
 
-    return repositories.sort((a, b) => b.totalStars - a.totalStars);
+    return repositoriesByCategory;
   } catch (error) {
     console.error('Failed to load repository data:', error);
-    return [];
+    return {};
   }
 };
 
+// Cache for processed time series data
+const processedDataCache = new Map();
+
 export const processTimeSeriesData = (starsByDate, forksByDate) => {
-  const dates = new Set([...Object.keys(starsByDate), ...Object.keys(forksByDate)]);
-  const sortedDates = Array.from(dates).sort();
+  // Create cache key from data
+  const cacheKey = JSON.stringify({ 
+    starsCount: Object.keys(starsByDate).length,
+    forksCount: Object.keys(forksByDate).length,
+    lastStarsDate: Math.max(...Object.keys(starsByDate).map(d => new Date(d).getTime())),
+    lastForksDate: Math.max(...Object.keys(forksByDate).map(d => new Date(d).getTime()))
+  });
+  
+  if (processedDataCache.has(cacheKey)) {
+    return processedDataCache.get(cacheKey);
+  }
+
+  // Get all dates and convert to timestamps for faster sorting
+  const starDates = Object.keys(starsByDate);
+  const forkDates = Object.keys(forksByDate);
+  const allDates = [...new Set([...starDates, ...forkDates])];
+  
+  // Sort by timestamp (faster than string comparison)
+  const sortedDates = allDates.sort((a, b) => new Date(a) - new Date(b));
   
   let cumulativeStars = 0;
   let cumulativeForks = 0;
   
   const timeSeriesData = sortedDates.map(date => {
-    cumulativeStars += starsByDate[date] || 0;
-    cumulativeForks += forksByDate[date] || 0;
+    const dailyStars = starsByDate[date] || 0;
+    const dailyForks = forksByDate[date] || 0;
+    
+    cumulativeStars += dailyStars;
+    cumulativeForks += dailyForks;
     
     return {
       date,
       stars: cumulativeStars,
       forks: cumulativeForks,
-      dailyStars: starsByDate[date] || 0,
-      dailyForks: forksByDate[date] || 0
+      dailyStars,
+      dailyForks
     };
   });
+  
+  // Cache the result
+  processedDataCache.set(cacheKey, timeSeriesData);
+  
+  // Limit cache size to prevent memory leaks
+  if (processedDataCache.size > 100) {
+    const firstKey = processedDataCache.keys().next().value;
+    processedDataCache.delete(firstKey);
+  }
   
   return timeSeriesData;
 };
@@ -83,4 +116,34 @@ export const formatNumber = (num) => {
     return (num / 1000).toFixed(1) + 'K';
   }
   return num.toString();
+};
+
+export const refreshRepositoryData = async (selectedRepos) => {
+  const refreshedRepos = [];
+  
+  for (const repo of selectedRepos) {
+    try {
+      const dataUrl = `https://raw.githubusercontent.com/0x0w1/repostory/refs/heads/develop/repo_data/${repo.fileName}?t=${Date.now()}`;
+      const response = await fetch(dataUrl, { 
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+      const data = await response.json();
+      
+      refreshedRepos.push({
+        ...repo,
+        totalStars: data.total_stars,
+        fetchedAt: data.fetched_at,
+        starsByDate: data.stars_by_date || {},
+        forksByDate: data.forks_by_date || {}
+      });
+    } catch (error) {
+      console.warn(`Failed to refresh ${repo.name}:`, error);
+      refreshedRepos.push(repo);
+    }
+  }
+  
+  return refreshedRepos;
 };
