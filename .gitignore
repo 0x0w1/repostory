@@ -209,29 +209,6 @@ __marimo__/
 # access token
 access_token.txt
 
-# Node.js and npm
-app/node_modules/
-app/npm-debug.log*
-app/yarn-debug.log*
-app/yarn-error.log*
-app/pnpm-debug.log*
-app/.pnpm-store/
-
-# React/Vite build outputs
-app/dist/
-app/build/
-app/.next/
-app/out/
-
-# Environment variables
-app/.env.local
-app/.env.development.local
-app/.env.test.local
-app/.env.production.local
-
-# Vite cache
-app/.vite/
-
 # Editor directories and files
 .idea/
 *.swp
