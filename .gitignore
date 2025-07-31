@@ -205,3 +205,53 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# access token
+access_token.txt
+
+# Node.js and npm
+app/node_modules/
+app/npm-debug.log*
+app/yarn-debug.log*
+app/yarn-error.log*
+app/pnpm-debug.log*
+app/.pnpm-store/
+
+# React/Vite build outputs
+app/dist/
+app/build/
+app/.next/
+app/out/
+
+# Environment variables
+app/.env.local
+app/.env.development.local
+app/.env.test.local
+app/.env.production.local
+
+# Vite cache
+app/.vite/
+
+# Editor directories and files
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+._*
+Thumbs.db
+
+# Package manager lock files (optional - keep if you want reproducible builds)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Temporary files
+tmp/
+temp/

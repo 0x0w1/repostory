@@ -8,20 +8,25 @@ This is a Python tool that automatically tracks and ranks popular Python web fra
 
 ## Core Architecture
 
-**Main Component**: `ReadmeGenerator` class in `get_current_framework_stars.py`
-- Fetches GitHub repository data via API
-- Generates markdown table sorted by stars
-- Maintains time-series data in `framework_stars_history.json`
-- Handles authentication via `GITHUB_TOKEN` env var or `access_token.txt` file
+**Data Pipeline**: The project follows a 3-stage data processing pipeline:
+
+1. **Data Collection** (`repo_data_initializer.py`) - Uses GitHub GraphQL API to fetch stargazers/forks data, avoiding REST API pagination limits. Outputs individual JSON files per repository in `repo_data/`.
+
+2. **Data Processing** (`generate_history_from_repo_data.py`) - Converts daily counts to cumulative totals and generates `repository_histories.json` with comprehensive time-series data.
+
+3. **Output Generation** (`fetcher.py`) - Aggregates history data, generates markdown table sorted by stars, and updates README.md.
 
 **Key Files**:
-- `list.txt` - Contains GitHub repository URLs to track (22 frameworks)
+
+- `repositories.json` - Contains GitHub repository URLs to track (22 frameworks) in JSON format
+- `repo_data/` - Individual JSON files per repository with daily star/fork counts
+- `repository_histories.json` - Aggregated time-series data for all frameworks
 - `README.md` - Auto-generated output with current rankings
-- `framework_stars_history.json` - Time-series data for graphing (auto-generated)
 
 ## Development Commands
 
 **Setup**:
+
 ```bash
 # Install UV package manager (required)
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -34,62 +39,73 @@ export GITHUB_TOKEN="your_token_here"
 # OR create access_token.txt file locally
 ```
 
-**Run the main script**:
-```bash
-uv run get_current_framework_stars.py
-```
+**Core Operations**:
 
-**Add new framework to track**:
 ```bash
-echo "https://github.com/owner/repo" >> list.txt
+# Fetch data for a single repository
+uv run python/repo_data_initializer.py https://github.com/django/django
+
+# Generate aggregated history from repo data
+uv run python/generate_history_from_repo_data.py
+
+# Generate README from aggregated data
+uv run python/fetcher.py
+
+# Add new framework to track (edit repositories.json)
+# Add URL to the "repostory" array in repositories.json
 ```
 
 ## Dependencies & Requirements
 
-- **Python**: 3.12+ (specified in `.python-version`)
+- **Python**: 3.12+ (specified in `.python-version` and `pyproject.toml`)
 - **Package Manager**: UV (modern Python package manager)
-- **Required**: `requests>=2.32.4` for GitHub API calls
+- **Required**: `requests>=2.32.4` for GitHub API calls, `matplotlib>=3.7.0` for charts
 - **Authentication**: GitHub personal access token required
-
-## Automation
-
-**GitHub Actions**: `.github/workflows/update-readme.yml`
-- Runs weekly on Sundays at 00:00 UTC
-- Can be triggered manually
-- Only updates if last update was >1 week ago
-- Auto-commits changes with timestamp
 
 ## Data Structure
 
-**Historical JSON Format**:
+**Repository Data Format** (`repo_data/*.json`):
+
+```json
+{
+  "total_stars": 84378,
+  "fetched_at": "2025-07-28T23:40:55.409192",
+  "stars_by_date": { "2012-04-28": 3772, "2012-04-29": 4 },
+  "forks_by_date": { "2012-04-28": 145, "2012-04-29": 2 }
+}
+```
+
+**Aggregated History Format** (`repository_histories.json`):
+
 ```json
 {
   "metadata": {
     "first_recorded": "timestamp",
-    "last_updated": "timestamp", 
+    "last_updated": "timestamp",
     "total_snapshots": number
   },
   "projects": {
     "framework_name": {
       "name": "string",
       "html_url": "string",
-      "history": [
-        {
-          "timestamp": "ISO8601",
-          "stars": number,
-          "forks": number,
-          "open_issues": number,
-          "last_commit": "ISO8601"
-        }
-      ]
+      "history": [{"timestamp": "ISO8601", "stars": number, "forks": number}]
     }
   }
 }
 ```
 
+## Automation
+
+**GitHub Actions**:
+
+- `.github/workflows/update-repository-stars.yml` - Daily updates at 00:00 UTC
+- `.github/workflows/update-manually.yml` - Manual trigger support
+- Both auto-commit changes with timestamps
+
 ## Common Issues
 
 - **ModuleNotFoundError**: Run `uv sync` to install dependencies
 - **GitHub API Rate Limits**: Ensure `GITHUB_TOKEN` is set with valid token
-- **File Not Found**: `list.txt` must exist with repository URLs
+- **File Not Found**: `repositories.json` must exist with repository URLs
+- **Missing Charts**: Workflows expect `charts/` directory with generated chart images
 - No formal test suite exists - this is primarily a data collection tool
