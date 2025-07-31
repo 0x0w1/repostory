@@ -214,6 +214,7 @@ def main():
 
         output_data = {
             "total_stars": total_stars,
+            "total_forks": total_forks,
             "fetched_at": datetime.now().isoformat(),
             "per_page": 100,
             "last_stargazers_page": (total_stars + 99) // 100,
