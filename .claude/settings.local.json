@@ -15,8 +15,6 @@
       "Bash(timeout:*)",
       "Bash(jq:*)",
       "Bash(sudo rm:*)",
-      "Bash(npm cache clean:*)",
-      "Bash(yarn install)",
       "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": []
