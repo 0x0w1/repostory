@@ -58,10 +58,7 @@
     "https://github.com/encode/databases",
     "https://github.com/tortoise/tortoise-orm"
   ],
-  "python-async-http-clients": [
-    "https://github.com/encode/httpx",
-    "https://github.com/aio-libs/aiohttp"
-  ],
+  "python-async-http-clients": ["https://github.com/encode/httpx"],
   "python-async-utils": [
     "https://github.com/python-trio/trio",
     "https://github.com/agronholm/anyio",
