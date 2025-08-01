@@ -21,6 +21,51 @@
     "https://github.com/pyeve/eve",
     "https://github.com/tiangolo/fastapi",
     "https://github.com/encode/starlette",
-    "https://github.com/pallets/quart"
+    "https://github.com/pallets/quart",
+    "https://github.com/encode/django-rest-framework",
+    "https://github.com/vitalik/django-ninja"
+  ],
+  "python-machine-learning-frameworks": [
+    "https://github.com/tensorflow/tensorflow",
+    "https://github.com/pytorch/pytorch",
+    "https://github.com/scikit-learn/scikit-learn",
+    "https://github.com/keras-team/keras",
+    "https://github.com/huggingface/transformers"
+  ],
+  "python-data-analyze-libraries": [
+    "https://github.com/pandas-dev/pandas",
+    "https://github.com/numpy/numpy",
+    "https://github.com/scipy/scipy",
+    "https://github.com/dask/dask"
+  ],
+  "python-data-visualization-libraries": [
+    "https://github.com/matplotlib/matplotlib",
+    "https://github.com/mwaskom/seaborn",
+    "https://github.com/plotly/plotly.py"
+  ],
+  "python-reinforcement-learning": [
+    "https://github.com/Farama-Foundation/Gym",
+    "https://github.com/ray-project/ray",
+    "https://github.com/explosion/spaCy",
+    "https://github.com/opencv/opencv-python"
+  ],
+  "python-core-async-frameworks-tools": [
+    "https://github.com/python/cpython/tree/main/Lib/asyncio",
+    "https://github.com/MagicStack/uvloop"
+  ],
+  "python-async-database-drivers-and-orms": [
+    "https://github.com/sqlalchemy/sqlalchemy",
+    "https://github.com/encode/databases",
+    "https://github.com/tortoise/tortoise-orm"
+  ],
+  "python-async-http-clients": [
+    "https://github.com/encode/httpx",
+    "https://github.com/aio-libs/aiohttp"
+  ],
+  "python-async-utils": [
+    "https://github.com/python-trio/trio",
+    "https://github.com/agronholm/anyio",
+    "https://github.com/celery/celery",
+    "https://github.com/sqlalchemy/alembic"
   ]
 }
