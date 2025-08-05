@@ -67,6 +67,12 @@ class GitHubFetcher:
                 print(f"GraphQL errors: {result['errors']}")
                 return None
 
+            # Debug: Print response structure for first query
+            if variables and variables.get("cursor") is None:
+                print(f"DEBUG: Response keys: {list(result.keys())}")
+                if "data" in result and result["data"]:
+                    print(f"DEBUG: Data keys: {list(result['data'].keys())}")
+
             return result.get("data")
         except requests.exceptions.RequestException as e:
             print(f"Error executing query: {e}")
@@ -93,16 +99,19 @@ class GitHubFetcher:
             data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
 
             if not data or not data.get("repository"):
+                print(f"DEBUG: No data or repository in response. Data: {data}")
                 break
 
-            edges = data["repository"]["stargazers"]["edges"]
+            stargazers_data = data["repository"]["stargazers"]
+            edges = stargazers_data["edges"]
             if not edges:
+                print(f"DEBUG: No edges found in stargazers data")
                 break
 
             stargazers.extend(edges)
             print(f"Fetched page {page}, total stargazers: {len(stargazers)}")
 
-            page_info = data["repository"]["stargazers"]["pageInfo"]
+            page_info = stargazers_data["pageInfo"]
             if not page_info.get("hasNextPage"):
                 break
 
@@ -248,7 +257,7 @@ class GitHubFetcher:
         for item in items:
             if date_field == "starredAt":
                 date_str = item.get("starredAt")
-            elif date_field in ["createdAt", "issues", "pullRequests"]:
+            elif date_field == "createdAt":
                 date_str = item.get("node", {}).get("createdAt")
             else:
                 continue
@@ -290,6 +299,28 @@ def main():
 
         print(f"Fetching data for {owner}/{repo} using GraphQL...")
 
+        # Test API connection first
+        test_query = """
+        query($owner: String!, $name: String!) {
+          repository(owner: $owner, name: $name) {
+            name
+            stargazerCount
+            forkCount
+          }
+        }
+        """
+        
+        print("\n=== Testing API Connection ===")
+        test_data = fetcher.execute_query(test_query, {"owner": owner, "name": repo})
+        if not test_data or not test_data.get("repository"):
+            print(f"ERROR: Cannot access repository {owner}/{repo}. Check if repository exists and token has correct permissions.")
+            sys.exit(1)
+            
+        repo_info = test_data["repository"]
+        print(f"Repository found: {repo_info['name']}")
+        print(f"Total stars: {repo_info['stargazerCount']}")
+        print(f"Total forks: {repo_info['forkCount']}")
+
         # Fetch data
         print("\n=== Fetching Stargazers ===")
         stargazers = fetcher.fetch_stargazers(owner, repo)
@@ -306,8 +337,8 @@ def main():
         # Group by date
         stars_by_date = fetcher.group_by_date(stargazers, "starredAt")
         forks_by_date = fetcher.group_by_date(forks, "createdAt")
-        issues_by_date = fetcher.group_by_date(issues, "issues")
-        pull_requests_by_date = fetcher.group_by_date(pull_requests, "pullRequests")
+        issues_by_date = fetcher.group_by_date(issues, "createdAt")
+        pull_requests_by_date = fetcher.group_by_date(pull_requests, "createdAt")
 
         # Prepare output data
         total_stars = len(stargazers)
