@@ -44,10 +44,9 @@ jobs:
                   print(f'Processing category: {category}')
                   for url in urls:
                       print(f'Running initializer for: {url}')
-                      result = subprocess.run(['uv', 'run', 'python/repo_data_initializer.py', url], 
-                                            capture_output=True, text=True)
+                      result = subprocess.run(['uv', 'run', 'python/repo_data_initializer.py', url])
                       if result.returncode != 0:
-                          print(f'Error processing {url}: {result.stderr}')
+                          print(f'Error processing {url}')
                       else:
                           print(f'Successfully processed {url}')
           except Exception as e:
