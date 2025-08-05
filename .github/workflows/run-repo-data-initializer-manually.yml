@@ -81,4 +81,4 @@ jobs:
           git add repo_data/
           git diff --cached --name-only
           git commit -m "Manual update repository data - $(date +'%Y-%m-%d %H:%M:%S UTC')"
-          git push origin main
+          git push origin HEAD
