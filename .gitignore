@@ -232,3 +232,6 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Test output files
+test/output/
