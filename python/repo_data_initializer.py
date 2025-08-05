@@ -2,8 +2,8 @@
 """
 GitHub Repository Data Fetcher using GraphQL
 
-Fetches stargazers and forks data from GitHub GraphQL API to avoid
-REST API pagination limits and outputs data grouped by date.
+Fetches stargazers, forks, issues, and pull requests data from GitHub GraphQL API
+to avoid REST API pagination limits and outputs data grouped by date.
 """
 
 import argparse
@@ -150,6 +150,97 @@ class GitHubFetcher:
 
         return forks
 
+    def fetch_issues(self, owner, repo):
+        """Fetch all issues using GraphQL pagination."""
+        query = """
+        query($owner: String!, $name: String!, $cursor: String) {
+          repository(owner: $owner, name: $name) {
+            issues(first: 100, after: $cursor, orderBy: {field: CREATED_AT, direction: ASC}) {
+              pageInfo { hasNextPage endCursor }
+              edges { 
+                node { 
+                  createdAt
+                  state
+                  closedAt
+                }
+              }
+            }
+          }
+        }
+        """
+
+        issues = []
+        cursor = None
+        page = 1
+
+        while True:
+            data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
+
+            if not data or not data.get("repository"):
+                break
+
+            edges = data["repository"]["issues"]["edges"]
+            if not edges:
+                break
+
+            issues.extend(edges)
+            print(f"Fetched page {page}, total issues: {len(issues)}")
+
+            page_info = data["repository"]["issues"]["pageInfo"]
+            if not page_info.get("hasNextPage"):
+                break
+
+            cursor = page_info.get("endCursor")
+            page += 1
+
+        return issues
+
+    def fetch_pull_requests(self, owner, repo):
+        """Fetch all pull requests using GraphQL pagination."""
+        query = """
+        query($owner: String!, $name: String!, $cursor: String) {
+          repository(owner: $owner, name: $name) {
+            pullRequests(first: 100, after: $cursor, orderBy: {field: CREATED_AT, direction: ASC}) {
+              pageInfo { hasNextPage endCursor }
+              edges { 
+                node { 
+                  createdAt
+                  state
+                  closedAt
+                  mergedAt
+                }
+              }
+            }
+          }
+        }
+        """
+
+        pull_requests = []
+        cursor = None
+        page = 1
+
+        while True:
+            data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
+
+            if not data or not data.get("repository"):
+                break
+
+            edges = data["repository"]["pullRequests"]["edges"]
+            if not edges:
+                break
+
+            pull_requests.extend(edges)
+            print(f"Fetched page {page}, total pull requests: {len(pull_requests)}")
+
+            page_info = data["repository"]["pullRequests"]["pageInfo"]
+            if not page_info.get("hasNextPage"):
+                break
+
+            cursor = page_info.get("endCursor")
+            page += 1
+
+        return pull_requests
+
     @staticmethod
     def group_by_date(items, date_field):
         """Group items by date."""
@@ -157,8 +248,10 @@ class GitHubFetcher:
         for item in items:
             if date_field == "starredAt":
                 date_str = item.get("starredAt")
-            else:
+            elif date_field in ["createdAt", "issues", "pullRequests"]:
                 date_str = item.get("node", {}).get("createdAt")
+            else:
+                continue
 
             if date_str:
                 date_obj = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
@@ -204,23 +297,39 @@ def main():
         print("\n=== Fetching Forks ===")
         forks = fetcher.fetch_forks(owner, repo)
 
+        print("\n=== Fetching Issues ===")
+        issues = fetcher.fetch_issues(owner, repo)
+
+        print("\n=== Fetching Pull Requests ===")
+        pull_requests = fetcher.fetch_pull_requests(owner, repo)
+
         # Group by date
         stars_by_date = fetcher.group_by_date(stargazers, "starredAt")
         forks_by_date = fetcher.group_by_date(forks, "createdAt")
+        issues_by_date = fetcher.group_by_date(issues, "issues")
+        pull_requests_by_date = fetcher.group_by_date(pull_requests, "pullRequests")
 
         # Prepare output data
         total_stars = len(stargazers)
         total_forks = len(forks)
+        total_issues = len(issues)
+        total_pull_requests = len(pull_requests)
 
         output_data = {
             "total_stars": total_stars,
             "total_forks": total_forks,
+            "total_issues": total_issues,
+            "total_pull_requests": total_pull_requests,
             "fetched_at": datetime.now().isoformat(),
             "per_page": 100,
             "last_stargazers_page": (total_stars + 99) // 100,
             "last_forks_page": (total_forks + 99) // 100,
+            "last_issues_page": (total_issues + 99) // 100,
+            "last_pull_requests_page": (total_pull_requests + 99) // 100,
             "stars_by_date": dict(sorted(stars_by_date.items())),
             "forks_by_date": dict(sorted(forks_by_date.items())),
+            "issues_by_date": dict(sorted(issues_by_date.items())),
+            "pull_requests_by_date": dict(sorted(pull_requests_by_date.items())),
         }
 
         # Save data
@@ -230,8 +339,11 @@ def main():
         print(f"\nData saved to {output_filename}")
         print(f"Total stars fetched: {total_stars}")
         print(f"Total forks fetched: {total_forks}")
+        print(f"Total issues fetched: {total_issues}")
+        print(f"Total pull requests fetched: {total_pull_requests}")
         print(
-            f"Equivalent pages - Stars: {output_data['last_stargazers_page']}, Forks: {output_data['last_forks_page']}"
+            f"Equivalent pages - Stars: {output_data['last_stargazers_page']}, Forks: {output_data['last_forks_page']}, "
+            f"Issues: {output_data['last_issues_page']}, PRs: {output_data['last_pull_requests_page']}"
         )
 
     except Exception as e:
