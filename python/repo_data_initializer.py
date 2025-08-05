@@ -182,25 +182,36 @@ class GitHubFetcher:
         cursor = None
         page = 1
 
-        while True:
-            data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
+        try:
+            while True:
+                data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
 
-            if not data or not data.get("repository"):
-                break
+                if not data or not data.get("repository"):
+                    print(f"WARNING: No issues data received for {owner}/{repo}")
+                    break
 
-            edges = data["repository"]["issues"]["edges"]
-            if not edges:
-                break
+                repository_data = data["repository"]
+                if "issues" not in repository_data:
+                    print(f"WARNING: Issues field not found in repository data for {owner}/{repo}")
+                    break
 
-            issues.extend(edges)
-            print(f"Fetched page {page}, total issues: {len(issues)}")
+                edges = repository_data["issues"]["edges"]
+                if not edges:
+                    if page == 1:
+                        print(f"INFO: No issues found for {owner}/{repo}")
+                    break
 
-            page_info = data["repository"]["issues"]["pageInfo"]
-            if not page_info.get("hasNextPage"):
-                break
+                issues.extend(edges)
+                print(f"Fetched page {page}, total issues: {len(issues)}")
 
-            cursor = page_info.get("endCursor")
-            page += 1
+                page_info = repository_data["issues"]["pageInfo"]
+                if not page_info.get("hasNextPage"):
+                    break
+
+                cursor = page_info.get("endCursor")
+                page += 1
+        except Exception as e:
+            print(f"ERROR: Failed to fetch issues for {owner}/{repo}: {e}")
 
         return issues
 
@@ -228,25 +239,36 @@ class GitHubFetcher:
         cursor = None
         page = 1
 
-        while True:
-            data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
+        try:
+            while True:
+                data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
 
-            if not data or not data.get("repository"):
-                break
+                if not data or not data.get("repository"):
+                    print(f"WARNING: No pull requests data received for {owner}/{repo}")
+                    break
 
-            edges = data["repository"]["pullRequests"]["edges"]
-            if not edges:
-                break
+                repository_data = data["repository"]
+                if "pullRequests" not in repository_data:
+                    print(f"WARNING: Pull requests field not found in repository data for {owner}/{repo}")
+                    break
 
-            pull_requests.extend(edges)
-            print(f"Fetched page {page}, total pull requests: {len(pull_requests)}")
+                edges = repository_data["pullRequests"]["edges"]
+                if not edges:
+                    if page == 1:
+                        print(f"INFO: No pull requests found for {owner}/{repo}")
+                    break
 
-            page_info = data["repository"]["pullRequests"]["pageInfo"]
-            if not page_info.get("hasNextPage"):
-                break
+                pull_requests.extend(edges)
+                print(f"Fetched page {page}, total pull requests: {len(pull_requests)}")
 
-            cursor = page_info.get("endCursor")
-            page += 1
+                page_info = repository_data["pullRequests"]["pageInfo"]
+                if not page_info.get("hasNextPage"):
+                    break
+
+                cursor = page_info.get("endCursor")
+                page += 1
+        except Exception as e:
+            print(f"ERROR: Failed to fetch pull requests for {owner}/{repo}: {e}")
 
         return pull_requests
 
@@ -334,11 +356,11 @@ def main():
         print("\n=== Fetching Pull Requests ===")
         pull_requests = fetcher.fetch_pull_requests(owner, repo)
 
-        # Group by date
-        stars_by_date = fetcher.group_by_date(stargazers, "starredAt")
-        forks_by_date = fetcher.group_by_date(forks, "createdAt")
-        issues_by_date = fetcher.group_by_date(issues, "createdAt")
-        pull_requests_by_date = fetcher.group_by_date(pull_requests, "createdAt")
+        # Group by date with fallback to empty dict
+        stars_by_date = fetcher.group_by_date(stargazers, "starredAt") if stargazers else {}
+        forks_by_date = fetcher.group_by_date(forks, "createdAt") if forks else {}
+        issues_by_date = fetcher.group_by_date(issues, "createdAt") if issues else {}
+        pull_requests_by_date = fetcher.group_by_date(pull_requests, "createdAt") if pull_requests else {}
 
         # Prepare output data
         total_stars = len(stargazers)
