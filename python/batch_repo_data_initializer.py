@@ -26,6 +26,45 @@ def debug_print(message, debug=False):
         print(message)
 
 
+def filter_repositories(all_repos, output_dir, debug=False):
+    """Filter out repositories that already have data files to avoid subprocess overhead."""
+    repos_to_process = []
+    skipped_repos = []
+
+    for url in all_repos:
+        try:
+            # Parse URL to get owner/repo without creating GitHubFetcher instance
+            path_parts = url.strip().rstrip("/").split("/")
+            if len(path_parts) >= 2:
+                owner = path_parts[-2]
+                repo = path_parts[-1]
+            else:
+                # Fallback parsing
+                from urllib.parse import urlparse
+
+                path_parts = urlparse(url).path.strip("/").split("/")
+                if len(path_parts) >= 2:
+                    owner, repo = path_parts[0], path_parts[1]
+                else:
+                    print(f"[ERROR] Invalid GitHub URL format: {url}")
+                    continue
+
+            output_filename = f"{output_dir}/{owner}_{repo}.json"
+            if os.path.exists(output_filename):
+                debug_print(f"[SKIP] {owner}/{repo} - File already exists", debug)
+                skipped_repos.append(
+                    {"url": url, "status": "skipped", "reason": "file_exists", "owner": owner, "repo": repo}
+                )
+            else:
+                repos_to_process.append(url)
+
+        except Exception as e:
+            print(f"[ERROR] Failed to parse URL {url}: {e}")
+            continue
+
+    return repos_to_process, skipped_repos
+
+
 def process_repository(url, output_dir, token, delay=0, debug=False):
     """Process a single repository with optional delay for rate limiting."""
     try:
@@ -38,12 +77,6 @@ def process_repository(url, output_dir, token, delay=0, debug=False):
 
         fetcher = GitHubFetcher(token, debug)
         owner, repo = fetcher.parse_url(url)
-
-        # Check if file already exists
-        output_filename = f"{output_dir}/{owner}_{repo}.json"
-        if os.path.exists(output_filename):
-            print(f"[SKIP] {owner}/{repo} - File already exists")
-            return {"url": url, "status": "skipped", "reason": "file_exists"}
 
         debug_print(f"[START] Processing {owner}/{repo}", debug)
 
@@ -110,6 +143,7 @@ def process_repository(url, output_dir, token, delay=0, debug=False):
         }
 
         # Save data
+        output_filename = f"{output_dir}/{owner}_{repo}.json"
         fetcher.save_data(output_data, output_filename)
 
         debug_print(f"[SUCCESS] {owner}/{repo} - Stars: {total_stars}, Forks: {total_forks}", debug)
@@ -166,16 +200,31 @@ def main():
         print(f"Found category '{category}' with {len(urls)} repositories")
         all_repos.extend(urls)
 
-    print(f"\nTotal repositories to process: {len(all_repos)}")
+    print(f"\nTotal repositories found: {len(all_repos)}")
 
     # Create output directory
     output_dir = "repo_data"
     os.makedirs(output_dir, exist_ok=True)
 
+    # Pre-filter repositories to skip those that already have data files
+    print("Pre-filtering repositories to skip existing files...")
+    repos_to_process, skipped_repos = filter_repositories(all_repos, output_dir, args.debug)
+
+    print(f"Repositories to process: {len(repos_to_process)}")
+    print(f"Repositories already processed (skipped): {len(skipped_repos)}")
+
+    # If no repositories to process, exit early
+    if not repos_to_process:
+        print("\n✅ All repositories already have data files. Nothing to process!")
+        return
+
     # Process repositories with specified worker count
     # Limit workers to available repositories and specified count
-    max_workers = min(args.workers, len(all_repos))
+    max_workers = min(args.workers, len(repos_to_process))
     results = []
+
+    # Add skipped repositories to results first
+    results.extend(skipped_repos)
 
     print(f"Starting batch processing with {max_workers} concurrent workers...")
 
@@ -186,7 +235,7 @@ def main():
         # GitHub GraphQL API allows 5,000 points per hour per token
         future_to_url = {
             executor.submit(process_repository, url, output_dir, token, i * 1.0, args.debug): url
-            for i, url in enumerate(all_repos)
+            for i, url in enumerate(repos_to_process)
         }
 
         # Collect results as they complete
@@ -196,9 +245,12 @@ def main():
                 result = future.result()
                 results.append(result)
 
-                # Progress indicator
-                completed = len(results)
-                print(f"[PROGRESS] {completed}/{len(all_repos)} completed ({completed/len(all_repos)*100:.1f}%)")
+                # Progress indicator (count only the processing jobs, not pre-skipped ones)
+                completed_processing = len(results) - len(skipped_repos)
+                total_processing = len(repos_to_process)
+                print(
+                    f"[PROGRESS] {completed_processing}/{total_processing} processed ({completed_processing/total_processing*100:.1f}%)"
+                )
 
             except Exception as e:
                 print(f"[ERROR] Unexpected error processing {url}: {e}")

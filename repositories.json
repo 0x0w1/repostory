@@ -44,7 +44,7 @@
     "https://github.com/plotly/plotly.py"
   ],
   "python-reinforcement-learning": [
-    "https://github.com/Farama-Foundation/Gym",
+    "https://github.com/openai/gym",
     "https://github.com/ray-project/ray",
     "https://github.com/explosion/spaCy",
     "https://github.com/opencv/opencv-python"
