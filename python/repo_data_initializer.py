@@ -109,7 +109,6 @@ class GitHubFetcher:
                 break
 
             stargazers.extend(edges)
-            print(f"Fetched page {page}, total stargazers: {len(stargazers)}")
 
             page_info = stargazers_data["pageInfo"]
             if not page_info.get("hasNextPage"):
@@ -148,7 +147,6 @@ class GitHubFetcher:
                 break
 
             forks.extend(edges)
-            print(f"Fetched page {page}, total forks: {len(forks)}")
 
             page_info = data["repository"]["forks"]["pageInfo"]
             if not page_info.get("hasNextPage"):
@@ -202,7 +200,6 @@ class GitHubFetcher:
                     break
 
                 issues.extend(edges)
-                print(f"Fetched page {page}, total issues: {len(issues)}")
 
                 page_info = repository_data["issues"]["pageInfo"]
                 if not page_info.get("hasNextPage"):
@@ -259,7 +256,6 @@ class GitHubFetcher:
                     break
 
                 pull_requests.extend(edges)
-                print(f"Fetched page {page}, total pull requests: {len(pull_requests)}")
 
                 page_info = repository_data["pullRequests"]["pageInfo"]
                 if not page_info.get("hasNextPage"):
