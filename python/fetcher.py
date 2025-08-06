@@ -67,25 +67,26 @@ def get_repository_data(owner: str, repo: str, token: Optional[str] = None) -> O
         pulls_url = f"https://api.github.com/repos/{owner}/{repo}/pulls?state=all&per_page=1"
         pulls_response = requests.get(pulls_url, headers=headers)
         pulls_response.raise_for_status()
-        
+
         # Extract total count from Link header or use fallback
         total_pulls = 0
-        if 'Link' in pulls_response.headers:
-            link_header = pulls_response.headers['Link']
+        if "Link" in pulls_response.headers:
+            link_header = pulls_response.headers["Link"]
             # Parse last page number from Link header
             import re
+
             match = re.search(r'&page=(\d+)>; rel="last"', link_header)
             if match:
                 total_pulls = int(match.group(1))
-        
+
         # Get issues count (GitHub API includes PRs in issues count, so we need to subtract)
         issues_url = f"https://api.github.com/repos/{owner}/{repo}/issues?state=all&per_page=1"
         issues_response = requests.get(issues_url, headers=headers)
         issues_response.raise_for_status()
-        
+
         total_issues = 0
-        if 'Link' in issues_response.headers:
-            link_header = issues_response.headers['Link']
+        if "Link" in issues_response.headers:
+            link_header = issues_response.headers["Link"]
             match = re.search(r'&page=(\d+)>; rel="last"', link_header)
             if match:
                 # Total issues from API includes PRs, so subtract PRs to get actual issues
@@ -128,12 +129,12 @@ def update_repo_data_file(owner: str, repo: str, current_data: Dict) -> None:
         previous_forks = repo_data.get("total_forks", 0)
         previous_issues = repo_data.get("total_issues", 0)
         previous_prs = repo_data.get("total_pull_requests", 0)
-        
+
         current_stars = current_data["stars"]
         current_forks = current_data["forks"]
         current_issues = current_data["total_issues"]
         current_prs = current_data["total_pull_requests"]
-        
+
         star_diff = current_stars - previous_stars
         fork_diff = current_forks - previous_forks
         issue_diff = current_issues - previous_issues
@@ -173,7 +174,7 @@ def update_repo_data_file(owner: str, repo: str, current_data: Dict) -> None:
 
         if has_changes:
             repo_data["fetched_at"] = current_data["fetched_at"]
-            
+
             # Save updated data
             with open(repo_file, "w", encoding="utf-8") as f:
                 json.dump(repo_data, f, ensure_ascii=False, separators=(",", ":"))
@@ -187,10 +188,12 @@ def update_repo_data_file(owner: str, repo: str, current_data: Dict) -> None:
                 changes.append(f"issues: {previous_issues} -> {current_issues} ({issue_diff:+d})")
             if pr_diff != 0:
                 changes.append(f"PRs: {previous_prs} -> {current_prs} ({pr_diff:+d})")
-            
+
             print(f"Updated {owner}/{repo}: {', '.join(changes)}")
         else:
-            print(f"No changes for {owner}/{repo}: {current_stars} stars, {current_forks} forks, {current_issues} issues, {current_prs} PRs")
+            print(
+                f"No changes for {owner}/{repo}: {current_stars} stars, {current_forks} forks, {current_issues} issues, {current_prs} PRs"
+            )
 
     except Exception as e:
         print(f"Failed to update {owner}/{repo}: {e}")

@@ -44,14 +44,21 @@
     "https://github.com/plotly/plotly.py"
   ],
   "python-reinforcement-learning": [
-    "https://github.com/Farama-Foundation/Gym",
+    "https://github.com/openai/gym",
     "https://github.com/ray-project/ray",
     "https://github.com/explosion/spaCy",
     "https://github.com/opencv/opencv-python"
   ],
   "python-core-async-frameworks-tools": [
-    "https://github.com/python/cpython/tree/main/Lib/asyncio",
     "https://github.com/MagicStack/uvloop"
+  ],
+  "python-core": [
+    "https://github.com/python/cpython",
+    "https://github.com/pypy/pypy",
+    "https://github.com/jython/jython",
+    "https://github.com/IronLanguages/ironpython3",
+    "https://github.com/micropython/micropython",
+    "https://github.com/RustPython/RustPython"
   ],
   "python-async-database-drivers-and-orms": [
     "https://github.com/sqlalchemy/sqlalchemy",
