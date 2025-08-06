@@ -78,7 +78,7 @@ def process_repository(url, output_dir, token, delay=0, debug=False):
         fetcher = GitHubFetcher(token, debug)
         owner, repo = fetcher.parse_url(url)
 
-        debug_print(f"[START] Processing {owner}/{repo}", debug)
+        print(f"[START] Processing {owner}/{repo}")
 
         # Test API connection first
         test_query = """
