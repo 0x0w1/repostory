@@ -15,7 +15,9 @@
       "Bash(timeout:*)",
       "Bash(jq:*)",
       "Bash(sudo rm:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(rename:*)",
+      "Bash(PYTHONPATH=test uv run python test/init_issues.py https://github.com/tiangolo/fastapi)"
     ],
     "deny": []
   }

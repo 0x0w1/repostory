@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Framework Stars Fetcher and README Generator
+Framework Repository Data Fetcher and README Generator
 
-Fetches current repository data from GitHub API, updates local JSON files,
-and generates README with current rankings.
+Fetches current repository data (stars, forks, issues, pull requests) from GitHub API,
+updates local JSON files, and generates README with current rankings.
 """
 
 import json
@@ -52,23 +52,56 @@ def get_github_token() -> Optional[str]:
 
 def get_repository_data(owner: str, repo: str, token: Optional[str] = None) -> Optional[Dict]:
     """Get complete repository data from GitHub API."""
-    url = f"https://api.github.com/repos/{owner}/{repo}"
     headers = {"User-Agent": "Python-Framework-Tracker"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
     try:
-        response = requests.get(url, headers=headers)
+        # Get basic repository data
+        repo_url = f"https://api.github.com/repos/{owner}/{repo}"
+        response = requests.get(repo_url, headers=headers)
         response.raise_for_status()
-        data = response.json()
+        repo_data = response.json()
+
+        # Get pull requests count
+        pulls_url = f"https://api.github.com/repos/{owner}/{repo}/pulls?state=all&per_page=1"
+        pulls_response = requests.get(pulls_url, headers=headers)
+        pulls_response.raise_for_status()
+
+        # Extract total count from Link header or use fallback
+        total_pulls = 0
+        if "Link" in pulls_response.headers:
+            link_header = pulls_response.headers["Link"]
+            # Parse last page number from Link header
+            import re
+
+            match = re.search(r'&page=(\d+)>; rel="last"', link_header)
+            if match:
+                total_pulls = int(match.group(1))
+
+        # Get issues count (GitHub API includes PRs in issues count, so we need to subtract)
+        issues_url = f"https://api.github.com/repos/{owner}/{repo}/issues?state=all&per_page=1"
+        issues_response = requests.get(issues_url, headers=headers)
+        issues_response.raise_for_status()
+
+        total_issues = 0
+        if "Link" in issues_response.headers:
+            link_header = issues_response.headers["Link"]
+            match = re.search(r'&page=(\d+)>; rel="last"', link_header)
+            if match:
+                # Total issues from API includes PRs, so subtract PRs to get actual issues
+                total_issues_with_prs = int(match.group(1))
+                total_issues = max(0, total_issues_with_prs - total_pulls)
 
         return {
             "name": repo,
-            "html_url": data.get("html_url", ""),
-            "stars": data.get("stargazers_count", 0),
-            "forks": data.get("forks_count", 0),
-            "open_issues": data.get("open_issues_count", 0),
-            "last_commit": data.get("pushed_at", ""),
+            "html_url": repo_data.get("html_url", ""),
+            "stars": repo_data.get("stargazers_count", 0),
+            "forks": repo_data.get("forks_count", 0),
+            "open_issues": repo_data.get("open_issues_count", 0),
+            "total_issues": total_issues,
+            "total_pull_requests": total_pulls,
+            "last_commit": repo_data.get("pushed_at", ""),
             "fetched_at": datetime.now().isoformat(),
         }
 
@@ -78,7 +111,7 @@ def get_repository_data(owner: str, repo: str, token: Optional[str] = None) -> O
 
 
 def update_repo_data_file(owner: str, repo: str, current_data: Dict) -> None:
-    """Update repository data file with current stars difference."""
+    """Update repository data file with current differences in stars, forks, issues, and pull requests."""
     repo_file = f"repo_data/{owner}_{repo}.json"
     today = datetime.now().strftime("%Y-%m-%d")
 
@@ -91,27 +124,76 @@ def update_repo_data_file(owner: str, repo: str, current_data: Dict) -> None:
         with open(repo_file, "r", encoding="utf-8") as f:
             repo_data = json.load(f)
 
-        # Calculate star difference
+        # Calculate differences
         previous_stars = repo_data.get("total_stars", 0)
-        current_stars = current_data["stars"]
-        star_diff = current_stars - previous_stars
+        previous_forks = repo_data.get("total_forks", 0)
+        previous_issues = repo_data.get("total_issues", 0)
+        previous_prs = repo_data.get("total_pull_requests", 0)
 
-        # Update stars_by_date if there's a difference
+        current_stars = current_data["stars"]
+        current_forks = current_data["forks"]
+        current_issues = current_data["total_issues"]
+        current_prs = current_data["total_pull_requests"]
+
+        star_diff = current_stars - previous_stars
+        fork_diff = current_forks - previous_forks
+        issue_diff = current_issues - previous_issues
+        pr_diff = current_prs - previous_prs
+
+        # Track if any changes occurred
+        has_changes = False
+
+        # Update data if there are differences
         if star_diff != 0:
             if "stars_by_date" not in repo_data:
                 repo_data["stars_by_date"] = {}
-
             repo_data["stars_by_date"][today] = star_diff
             repo_data["total_stars"] = current_stars
+            has_changes = True
+
+        if fork_diff != 0:
+            if "forks_by_date" not in repo_data:
+                repo_data["forks_by_date"] = {}
+            repo_data["forks_by_date"][today] = fork_diff
+            repo_data["total_forks"] = current_forks
+            has_changes = True
+
+        if issue_diff != 0:
+            if "issues_by_date" not in repo_data:
+                repo_data["issues_by_date"] = {}
+            repo_data["issues_by_date"][today] = issue_diff
+            repo_data["total_issues"] = current_issues
+            has_changes = True
+
+        if pr_diff != 0:
+            if "pull_requests_by_date" not in repo_data:
+                repo_data["pull_requests_by_date"] = {}
+            repo_data["pull_requests_by_date"][today] = pr_diff
+            repo_data["total_pull_requests"] = current_prs
+            has_changes = True
+
+        if has_changes:
             repo_data["fetched_at"] = current_data["fetched_at"]
 
             # Save updated data
             with open(repo_file, "w", encoding="utf-8") as f:
                 json.dump(repo_data, f, ensure_ascii=False, separators=(",", ":"))
 
-            print(f"Updated {owner}/{repo}: {previous_stars} -> {current_stars} (+{star_diff})")
+            changes = []
+            if star_diff != 0:
+                changes.append(f"stars: {previous_stars} -> {current_stars} ({star_diff:+d})")
+            if fork_diff != 0:
+                changes.append(f"forks: {previous_forks} -> {current_forks} ({fork_diff:+d})")
+            if issue_diff != 0:
+                changes.append(f"issues: {previous_issues} -> {current_issues} ({issue_diff:+d})")
+            if pr_diff != 0:
+                changes.append(f"PRs: {previous_prs} -> {current_prs} ({pr_diff:+d})")
+
+            print(f"Updated {owner}/{repo}: {', '.join(changes)}")
         else:
-            print(f"No change for {owner}/{repo}: {current_stars} stars")
+            print(
+                f"No changes for {owner}/{repo}: {current_stars} stars, {current_forks} forks, {current_issues} issues, {current_prs} PRs"
+            )
 
     except Exception as e:
         print(f"Failed to update {owner}/{repo}: {e}")
@@ -168,8 +250,8 @@ A list of popular github projects related to {category.replace('-', ' ')} (ranke
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(header)
-        f.write("| Project Name | Stars | Forks | Open Issues | Last Commit |\n")
-        f.write("| ------------ | ----- | ----- | ----------- | ----------- |\n")
+        f.write("| Project Name | Stars | Forks | Total Issues | Total PRs | Open Issues | Last Commit |\n")
+        f.write("| ------------ | ----- | ----- | ------------ | --------- | ----------- | ----------- |\n")
 
         for project in repo_data:
             # Format last commit date
@@ -187,6 +269,8 @@ A list of popular github projects related to {category.replace('-', ' ')} (ranke
                 f"| [{project['name']}]({project['html_url']}) | "
                 f"{project['stars']} | "
                 f"{project['forks']} | "
+                f"{project.get('total_issues', 'N/A')} | "
+                f"{project.get('total_pull_requests', 'N/A')} | "
                 f"{project['open_issues']} | "
                 f"{commit_date} |\n"
             )

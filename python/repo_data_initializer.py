@@ -2,8 +2,8 @@
 """
 GitHub Repository Data Fetcher using GraphQL
 
-Fetches stargazers and forks data from GitHub GraphQL API to avoid
-REST API pagination limits and outputs data grouped by date.
+Fetches stargazers, forks, issues, and pull requests data from GitHub GraphQL API
+to avoid REST API pagination limits and outputs data grouped by date.
 """
 
 import argparse
@@ -20,9 +20,16 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
+def debug_print(message, debug=False):
+    """Print debug message only if debug mode is enabled."""
+    if debug:
+        print(message)
+
+
 class GitHubFetcher:
-    def __init__(self, token=None):
+    def __init__(self, token=None, debug=False):
         self.token = token
+        self.debug = debug
         self.headers = {
             "User-Agent": "Python-GraphQL-Fetcher",
             "Content-Type": "application/json",
@@ -67,6 +74,12 @@ class GitHubFetcher:
                 print(f"GraphQL errors: {result['errors']}")
                 return None
 
+            # Debug: Print response structure for first query
+            if variables and variables.get("cursor") is None:
+                debug_print(f"DEBUG: Response keys: {list(result.keys())}", self.debug)
+                if "data" in result and result["data"]:
+                    debug_print(f"DEBUG: Data keys: {list(result['data'].keys())}", self.debug)
+
             return result.get("data")
         except requests.exceptions.RequestException as e:
             print(f"Error executing query: {e}")
@@ -93,16 +106,18 @@ class GitHubFetcher:
             data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
 
             if not data or not data.get("repository"):
+                debug_print(f"DEBUG: No data or repository in response. Data: {data}", self.debug)
                 break
 
-            edges = data["repository"]["stargazers"]["edges"]
+            stargazers_data = data["repository"]["stargazers"]
+            edges = stargazers_data["edges"]
             if not edges:
+                debug_print(f"DEBUG: No edges found in stargazers data", self.debug)
                 break
 
             stargazers.extend(edges)
-            print(f"Fetched page {page}, total stargazers: {len(stargazers)}")
 
-            page_info = data["repository"]["stargazers"]["pageInfo"]
+            page_info = stargazers_data["pageInfo"]
             if not page_info.get("hasNextPage"):
                 break
 
@@ -139,7 +154,6 @@ class GitHubFetcher:
                 break
 
             forks.extend(edges)
-            print(f"Fetched page {page}, total forks: {len(forks)}")
 
             page_info = data["repository"]["forks"]["pageInfo"]
             if not page_info.get("hasNextPage"):
@@ -150,6 +164,117 @@ class GitHubFetcher:
 
         return forks
 
+    def fetch_issues(self, owner, repo):
+        """Fetch all issues using GraphQL pagination."""
+        query = """
+        query($owner: String!, $name: String!, $cursor: String) {
+          repository(owner: $owner, name: $name) {
+            issues(first: 100, after: $cursor, orderBy: {field: CREATED_AT, direction: ASC}) {
+              pageInfo { hasNextPage endCursor }
+              edges { 
+                node { 
+                  createdAt
+                  state
+                  closedAt
+                }
+              }
+            }
+          }
+        }
+        """
+
+        issues = []
+        cursor = None
+        page = 1
+
+        try:
+            while True:
+                data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
+
+                if not data or not data.get("repository"):
+                    print(f"WARNING: No issues data received for {owner}/{repo}")
+                    break
+
+                repository_data = data["repository"]
+                if "issues" not in repository_data:
+                    print(f"WARNING: Issues field not found in repository data for {owner}/{repo}")
+                    break
+
+                edges = repository_data["issues"]["edges"]
+                if not edges:
+                    if page == 1:
+                        print(f"INFO: No issues found for {owner}/{repo}")
+                    break
+
+                issues.extend(edges)
+
+                page_info = repository_data["issues"]["pageInfo"]
+                if not page_info.get("hasNextPage"):
+                    break
+
+                cursor = page_info.get("endCursor")
+                page += 1
+        except Exception as e:
+            print(f"ERROR: Failed to fetch issues for {owner}/{repo}: {e}")
+
+        return issues
+
+    def fetch_pull_requests(self, owner, repo):
+        """Fetch all pull requests using GraphQL pagination."""
+        query = """
+        query($owner: String!, $name: String!, $cursor: String) {
+          repository(owner: $owner, name: $name) {
+            pullRequests(first: 100, after: $cursor, orderBy: {field: CREATED_AT, direction: ASC}) {
+              pageInfo { hasNextPage endCursor }
+              edges { 
+                node { 
+                  createdAt
+                  state
+                  closedAt
+                  mergedAt
+                }
+              }
+            }
+          }
+        }
+        """
+
+        pull_requests = []
+        cursor = None
+        page = 1
+
+        try:
+            while True:
+                data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
+
+                if not data or not data.get("repository"):
+                    print(f"WARNING: No pull requests data received for {owner}/{repo}")
+                    break
+
+                repository_data = data["repository"]
+                if "pullRequests" not in repository_data:
+                    print(f"WARNING: Pull requests field not found in repository data for {owner}/{repo}")
+                    break
+
+                edges = repository_data["pullRequests"]["edges"]
+                if not edges:
+                    if page == 1:
+                        print(f"INFO: No pull requests found for {owner}/{repo}")
+                    break
+
+                pull_requests.extend(edges)
+
+                page_info = repository_data["pullRequests"]["pageInfo"]
+                if not page_info.get("hasNextPage"):
+                    break
+
+                cursor = page_info.get("endCursor")
+                page += 1
+        except Exception as e:
+            print(f"ERROR: Failed to fetch pull requests for {owner}/{repo}: {e}")
+
+        return pull_requests
+
     @staticmethod
     def group_by_date(items, date_field):
         """Group items by date."""
@@ -157,8 +282,10 @@ class GitHubFetcher:
         for item in items:
             if date_field == "starredAt":
                 date_str = item.get("starredAt")
-            else:
+            elif date_field == "createdAt":
                 date_str = item.get("node", {}).get("createdAt")
+            else:
+                continue
 
             if date_str:
                 date_obj = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
@@ -178,6 +305,7 @@ def main():
     parser = argparse.ArgumentParser(description="Fetch GitHub repository data using GraphQL")
     parser.add_argument("repo_url", help="GitHub repository URL")
     parser.add_argument("--output-dir", default="repo_data", help="Output directory")
+    parser.add_argument("--debug", action="store_true", help="Enable debug output for detailed processing information")
 
     args = parser.parse_args()
 
@@ -186,7 +314,7 @@ def main():
         if not token:
             sys.exit(1)
 
-        fetcher = GitHubFetcher(token)
+        fetcher = GitHubFetcher(token, args.debug)
         owner, repo = fetcher.parse_url(args.repo_url)
 
         # Check if file already exists
@@ -197,6 +325,30 @@ def main():
 
         print(f"Fetching data for {owner}/{repo} using GraphQL...")
 
+        # Test API connection first
+        test_query = """
+        query($owner: String!, $name: String!) {
+          repository(owner: $owner, name: $name) {
+            name
+            stargazerCount
+            forkCount
+          }
+        }
+        """
+
+        print("\n=== Testing API Connection ===")
+        test_data = fetcher.execute_query(test_query, {"owner": owner, "name": repo})
+        if not test_data or not test_data.get("repository"):
+            print(
+                f"ERROR: Cannot access repository {owner}/{repo}. Check if repository exists and token has correct permissions."
+            )
+            sys.exit(1)
+
+        repo_info = test_data["repository"]
+        print(f"Repository found: {repo_info['name']}")
+        print(f"Total stars: {repo_info['stargazerCount']}")
+        print(f"Total forks: {repo_info['forkCount']}")
+
         # Fetch data
         print("\n=== Fetching Stargazers ===")
         stargazers = fetcher.fetch_stargazers(owner, repo)
@@ -204,23 +356,34 @@ def main():
         print("\n=== Fetching Forks ===")
         forks = fetcher.fetch_forks(owner, repo)
 
-        # Group by date
-        stars_by_date = fetcher.group_by_date(stargazers, "starredAt")
-        forks_by_date = fetcher.group_by_date(forks, "createdAt")
+        print("\n=== Fetching Issues ===")
+        issues = fetcher.fetch_issues(owner, repo)
+
+        print("\n=== Fetching Pull Requests ===")
+        pull_requests = fetcher.fetch_pull_requests(owner, repo)
+
+        # Group by date with fallback to empty dict
+        stars_by_date = fetcher.group_by_date(stargazers, "starredAt") if stargazers else {}
+        forks_by_date = fetcher.group_by_date(forks, "createdAt") if forks else {}
+        issues_by_date = fetcher.group_by_date(issues, "createdAt") if issues else {}
+        pull_requests_by_date = fetcher.group_by_date(pull_requests, "createdAt") if pull_requests else {}
 
         # Prepare output data
         total_stars = len(stargazers)
         total_forks = len(forks)
+        total_issues = len(issues)
+        total_pull_requests = len(pull_requests)
 
         output_data = {
             "total_stars": total_stars,
             "total_forks": total_forks,
+            "total_issues": total_issues,
+            "total_pull_requests": total_pull_requests,
             "fetched_at": datetime.now().isoformat(),
-            "per_page": 100,
-            "last_stargazers_page": (total_stars + 99) // 100,
-            "last_forks_page": (total_forks + 99) // 100,
             "stars_by_date": dict(sorted(stars_by_date.items())),
             "forks_by_date": dict(sorted(forks_by_date.items())),
+            "issues_by_date": dict(sorted(issues_by_date.items())),
+            "pull_requests_by_date": dict(sorted(pull_requests_by_date.items())),
         }
 
         # Save data
@@ -230,9 +393,8 @@ def main():
         print(f"\nData saved to {output_filename}")
         print(f"Total stars fetched: {total_stars}")
         print(f"Total forks fetched: {total_forks}")
-        print(
-            f"Equivalent pages - Stars: {output_data['last_stargazers_page']}, Forks: {output_data['last_forks_page']}"
-        )
+        print(f"Total issues fetched: {total_issues}")
+        print(f"Total pull requests fetched: {total_pull_requests}")
 
     except Exception as e:
         print(f"Error: {e}")
