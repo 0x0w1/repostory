@@ -10,7 +10,9 @@ This is a Python tool that automatically tracks and ranks popular Python web fra
 
 **Data Pipeline**: The project follows a 3-stage data processing pipeline:
 
-1. **Data Collection** (`repo_data_initializer.py`) - Uses GitHub GraphQL API to fetch stargazers/forks data, avoiding REST API pagination limits. Outputs individual JSON files per repository in `repo_data/`.
+1. **Data Collection** - Uses GitHub GraphQL API to fetch stargazers/forks data, avoiding REST API pagination limits. Outputs individual JSON files per repository in `repo_data/`.
+   - `repo_data_initializer.py` - Single repository processing
+   - `batch_repo_initializer.py` - Batch processing with configurable worker threads (default: 3 CPUs)
 
 2. **Data Processing** (`generate_history_from_repo_data.py`) - Converts daily counts to cumulative totals and generates `repository_histories.json` with comprehensive time-series data.
 
@@ -44,6 +46,12 @@ export GITHUB_TOKEN="your_token_here"
 ```bash
 # Fetch data for a single repository
 uv run python/repo_data_initializer.py https://github.com/django/django
+
+# Batch process all repositories (with default 3 workers)
+uv run python/batch_repo_initializer.py
+
+# Batch process with custom worker count
+uv run python/batch_repo_initializer.py --workers 8
 
 # Generate aggregated history from repo data
 uv run python/generate_history_from_repo_data.py

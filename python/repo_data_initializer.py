@@ -20,9 +20,16 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
+def debug_print(message, debug=False):
+    """Print debug message only if debug mode is enabled."""
+    if debug:
+        print(message)
+
+
 class GitHubFetcher:
-    def __init__(self, token=None):
+    def __init__(self, token=None, debug=False):
         self.token = token
+        self.debug = debug
         self.headers = {
             "User-Agent": "Python-GraphQL-Fetcher",
             "Content-Type": "application/json",
@@ -69,9 +76,9 @@ class GitHubFetcher:
 
             # Debug: Print response structure for first query
             if variables and variables.get("cursor") is None:
-                print(f"DEBUG: Response keys: {list(result.keys())}")
+                debug_print(f"DEBUG: Response keys: {list(result.keys())}", self.debug)
                 if "data" in result and result["data"]:
-                    print(f"DEBUG: Data keys: {list(result['data'].keys())}")
+                    debug_print(f"DEBUG: Data keys: {list(result['data'].keys())}", self.debug)
 
             return result.get("data")
         except requests.exceptions.RequestException as e:
@@ -99,13 +106,13 @@ class GitHubFetcher:
             data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
 
             if not data or not data.get("repository"):
-                print(f"DEBUG: No data or repository in response. Data: {data}")
+                debug_print(f"DEBUG: No data or repository in response. Data: {data}", self.debug)
                 break
 
             stargazers_data = data["repository"]["stargazers"]
             edges = stargazers_data["edges"]
             if not edges:
-                print(f"DEBUG: No edges found in stargazers data")
+                debug_print(f"DEBUG: No edges found in stargazers data", self.debug)
                 break
 
             stargazers.extend(edges)
@@ -298,6 +305,7 @@ def main():
     parser = argparse.ArgumentParser(description="Fetch GitHub repository data using GraphQL")
     parser.add_argument("repo_url", help="GitHub repository URL")
     parser.add_argument("--output-dir", default="repo_data", help="Output directory")
+    parser.add_argument("--debug", action="store_true", help="Enable debug output for detailed processing information")
 
     args = parser.parse_args()
 
@@ -306,7 +314,7 @@ def main():
         if not token:
             sys.exit(1)
 
-        fetcher = GitHubFetcher(token)
+        fetcher = GitHubFetcher(token, args.debug)
         owner, repo = fetcher.parse_url(args.repo_url)
 
         # Check if file already exists
@@ -327,13 +335,15 @@ def main():
           }
         }
         """
-        
+
         print("\n=== Testing API Connection ===")
         test_data = fetcher.execute_query(test_query, {"owner": owner, "name": repo})
         if not test_data or not test_data.get("repository"):
-            print(f"ERROR: Cannot access repository {owner}/{repo}. Check if repository exists and token has correct permissions.")
+            print(
+                f"ERROR: Cannot access repository {owner}/{repo}. Check if repository exists and token has correct permissions."
+            )
             sys.exit(1)
-            
+
         repo_info = test_data["repository"]
         print(f"Repository found: {repo_info['name']}")
         print(f"Total stars: {repo_info['stargazerCount']}")
@@ -370,11 +380,6 @@ def main():
             "total_issues": total_issues,
             "total_pull_requests": total_pull_requests,
             "fetched_at": datetime.now().isoformat(),
-            "per_page": 100,
-            "last_stargazers_page": (total_stars + 99) // 100,
-            "last_forks_page": (total_forks + 99) // 100,
-            "last_issues_page": (total_issues + 99) // 100,
-            "last_pull_requests_page": (total_pull_requests + 99) // 100,
             "stars_by_date": dict(sorted(stars_by_date.items())),
             "forks_by_date": dict(sorted(forks_by_date.items())),
             "issues_by_date": dict(sorted(issues_by_date.items())),
@@ -390,10 +395,6 @@ def main():
         print(f"Total forks fetched: {total_forks}")
         print(f"Total issues fetched: {total_issues}")
         print(f"Total pull requests fetched: {total_pull_requests}")
-        print(
-            f"Equivalent pages - Stars: {output_data['last_stargazers_page']}, Forks: {output_data['last_forks_page']}, "
-            f"Issues: {output_data['last_issues_page']}, PRs: {output_data['last_pull_requests_page']}"
-        )
 
     except Exception as e:
         print(f"Error: {e}")

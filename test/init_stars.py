@@ -132,10 +132,10 @@ class GitHubStarsFetcher:
         """Save data to JSON file."""
         os.makedirs("test/output", exist_ok=True)
         filename = f"test/output/{owner}_{repo}_stars.json"
-        
+
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
-        
+
         print(f"Stars data saved to {filename}")
         return filename
 
@@ -164,12 +164,14 @@ def main():
           }
         }
         """
-        
+
         test_data = fetcher.execute_query(test_query, {"owner": owner, "name": repo})
         if not test_data or not test_data.get("repository"):
-            print(f"ERROR: Cannot access repository {owner}/{repo}. Check if repository exists and token has correct permissions.")
+            print(
+                f"ERROR: Cannot access repository {owner}/{repo}. Check if repository exists and token has correct permissions."
+            )
             sys.exit(1)
-            
+
         repo_info = test_data["repository"]
         print(f"Repository found: {repo_info['name']}")
         print(f"Total stars: {repo_info['stargazerCount']}")
@@ -195,7 +197,7 @@ def main():
 
         # Print summary
         print(f"Total stars fetched: {total_stars}")
-        
+
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)

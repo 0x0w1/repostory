@@ -6,6 +6,7 @@ on:
 jobs:
   update-data:
     runs-on: ubuntu-latest
+    timeout-minutes: 60  # Prevent excessive usage on free plan
     permissions:
       contents: write
       actions: read
@@ -29,30 +30,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "=== Running repo_data_initializer.py for all repositories ==="
-          # Read all repositories from repositories.json and run initializer for each
-          python3 -c "
-          import json
-          import subprocess
-          import sys
-
-          try:
-              with open('repositories.json', 'r') as f:
-                  data = json.load(f)
-              
-              for category, urls in data.items():
-                  print(f'Processing category: {category}')
-                  for url in urls:
-                      print(f'Running initializer for: {url}')
-                      result = subprocess.run(['uv', 'run', 'python/repo_data_initializer.py', url])
-                      if result.returncode != 0:
-                          print(f'Error processing {url}')
-                      else:
-                          print(f'Successfully processed {url}')
-          except Exception as e:
-              print(f'Error: {e}')
-              sys.exit(1)
-          "
+          echo "=== GitHub Actions Environment Info ==="
+          echo "CPU cores: $(nproc)"
+          echo "Memory: $(free -h | grep '^Mem:' | awk '{print $2}')"
+          echo "=== Running batch repository data initializer ==="
+          # Monitor resource usage during execution
+          uv run python/batch_repo_initializer.py
 
       - name: Debug file status
         run: |
