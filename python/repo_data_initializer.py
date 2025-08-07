@@ -385,30 +385,56 @@ def main():
         print(f"Total stars: {repo_info['stargazerCount']}")
         print(f"Total forks: {repo_info['forkCount']}")
 
-        # Fetch data
-        print("\n=== Fetching Stargazers ===")
-        stargazers = fetcher.fetch_stargazers(owner, repo)
+        # Fetch data with individual error handling
+        stargazers = None
+        forks = None
+        issues = None
+        pull_requests = None
+        
+        try:
+            print("\n=== Fetching Stargazers ===")
+            stargazers = fetcher.fetch_stargazers(owner, repo)
+        except Exception as e:
+            print(f"ERROR: Failed to fetch stargazers for {owner}/{repo}: {e}")
+            sys.exit(1)
 
-        print("\n=== Fetching Forks ===")
-        forks = fetcher.fetch_forks(owner, repo)
+        try:
+            print("\n=== Fetching Forks ===")
+            forks = fetcher.fetch_forks(owner, repo)
+        except Exception as e:
+            print(f"ERROR: Failed to fetch forks for {owner}/{repo}: {e}")
+            sys.exit(1)
 
-        print("\n=== Fetching Issues ===")
-        issues = fetcher.fetch_issues(owner, repo)
+        try:
+            print("\n=== Fetching Issues ===")
+            issues = fetcher.fetch_issues(owner, repo)
+        except Exception as e:
+            print(f"ERROR: Failed to fetch issues for {owner}/{repo}: {e}")
+            sys.exit(1)
 
-        print("\n=== Fetching Pull Requests ===")
-        pull_requests = fetcher.fetch_pull_requests(owner, repo)
+        try:
+            print("\n=== Fetching Pull Requests ===")
+            pull_requests = fetcher.fetch_pull_requests(owner, repo)
+        except Exception as e:
+            print(f"ERROR: Failed to fetch pull requests for {owner}/{repo}: {e}")
+            sys.exit(1)
 
+        # Verify all fetch operations returned valid data (not None)
+        if stargazers is None or forks is None or issues is None or pull_requests is None:
+            print(f"ERROR: One or more fetch operations returned None for {owner}/{repo} - data collection failed")
+            sys.exit(1)
+        
         # Group by date with fallback to empty dict
         stars_by_date = fetcher.group_by_date(stargazers, "starredAt") if stargazers else {}
         forks_by_date = fetcher.group_by_date(forks, "createdAt") if forks else {}
         issues_by_date = fetcher.group_by_date(issues, "createdAt") if issues else {}
         pull_requests_by_date = fetcher.group_by_date(pull_requests, "createdAt") if pull_requests else {}
 
-        # Prepare output data
-        total_stars = len(stargazers)
-        total_forks = len(forks)
-        total_issues = len(issues)
-        total_pull_requests = len(pull_requests)
+        # Calculate totals from grouped data to ensure accuracy
+        total_stars = sum(stars_by_date.values()) if stars_by_date else 0
+        total_forks = sum(forks_by_date.values()) if forks_by_date else 0
+        total_issues = sum(issues_by_date.values()) if issues_by_date else 0
+        total_pull_requests = sum(pull_requests_by_date.values()) if pull_requests_by_date else 0
 
         output_data = {
             "total_stars": total_stars,
@@ -422,8 +448,19 @@ def main():
             "pull_requests_by_date": dict(sorted(pull_requests_by_date.items())),
         }
 
-        # Save data
-        fetcher.save_data(output_data, output_filename)
+        # Validate data before saving - ensure totals match expectations
+        if total_stars != repo_info['stargazerCount'] or total_forks != repo_info['forkCount']:
+            print(f"WARNING: Data mismatch for {owner}/{repo}:")
+            print(f"  API reports: {repo_info['stargazerCount']} stars, {repo_info['forkCount']} forks")
+            print(f"  Fetched: {total_stars} stars, {total_forks} forks")
+            print("This might indicate incomplete data fetch or API inconsistency")
+        
+        # Save data only if validation passes
+        try:
+            fetcher.save_data(output_data, output_filename)
+        except Exception as e:
+            print(f"ERROR: Failed to save data for {owner}/{repo}: {e}")
+            sys.exit(1)
 
         # Print summary
         print(f"\nData saved to {output_filename}")
