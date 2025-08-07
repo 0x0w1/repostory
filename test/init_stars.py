@@ -193,7 +193,7 @@ def main():
         }
 
         # Save data
-        filename = fetcher.save_data(output_data, owner, repo)
+        fetcher.save_data(output_data, owner, repo)
 
         # Print summary
         print(f"Total stars fetched: {total_stars}")

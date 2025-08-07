@@ -103,32 +103,51 @@ def process_repository(url, output_dir, token, delay=0, debug=False):
         )
 
         # Fetch all data with delays between calls for GitHub Actions
-        debug_print(f"[FETCH] {owner}/{repo} - Fetching stargazers...", debug)
-        stargazers = fetcher.fetch_stargazers(owner, repo)
-        time.sleep(api_delay)
+        # If any fetch fails due to rate limiting or errors, don't create the file
+        try:
+            debug_print(f"[FETCH] {owner}/{repo} - Fetching stargazers...", debug)
+            stargazers = fetcher.fetch_stargazers(owner, repo)
+            time.sleep(api_delay)
 
-        debug_print(f"[FETCH] {owner}/{repo} - Fetching forks...", debug)
-        forks = fetcher.fetch_forks(owner, repo)
-        time.sleep(api_delay)
+            debug_print(f"[FETCH] {owner}/{repo} - Fetching forks...", debug)
+            forks = fetcher.fetch_forks(owner, repo)
+            time.sleep(api_delay)
 
-        debug_print(f"[FETCH] {owner}/{repo} - Fetching issues...", debug)
-        issues = fetcher.fetch_issues(owner, repo)
-        time.sleep(api_delay)
+            debug_print(f"[FETCH] {owner}/{repo} - Fetching issues...", debug)
+            issues = fetcher.fetch_issues(owner, repo)
+            time.sleep(api_delay)
 
-        debug_print(f"[FETCH] {owner}/{repo} - Fetching pull requests...", debug)
-        pull_requests = fetcher.fetch_pull_requests(owner, repo)
+            debug_print(f"[FETCH] {owner}/{repo} - Fetching pull requests...", debug)
+            pull_requests = fetcher.fetch_pull_requests(owner, repo)
+        except Exception as e:
+            if "rate limit" in str(e).lower():
+                error_msg = f"Rate limit error while fetching data for {owner}/{repo}: {e}"
+                print(f"[ERROR] {error_msg}")
+                return {"url": url, "status": "error", "reason": error_msg}
+            else:
+                error_msg = f"API error while fetching data for {owner}/{repo}: {e}"
+                print(f"[ERROR] {error_msg}")
+                return {"url": url, "status": "error", "reason": error_msg}
+
+        # Verify we have valid data - prevent creating files with all zeros
+        total_stars = len(stargazers)
+        total_forks = len(forks)
+        total_issues = len(issues)
+        total_pull_requests = len(pull_requests)
+
+        # Check if all totals are zero, which might indicate API errors
+        if total_stars == 0 and total_forks == 0 and total_issues == 0 and total_pull_requests == 0:
+            error_msg = (
+                f"All data categories returned zero for {owner}/{repo} - possible API error or empty repository"
+            )
+            print(f"[WARNING] {error_msg}")
+            return {"url": url, "status": "error", "reason": error_msg}
 
         # Group by date
         stars_by_date = fetcher.group_by_date(stargazers, "starredAt") if stargazers else {}
         forks_by_date = fetcher.group_by_date(forks, "createdAt") if forks else {}
         issues_by_date = fetcher.group_by_date(issues, "createdAt") if issues else {}
         pull_requests_by_date = fetcher.group_by_date(pull_requests, "createdAt") if pull_requests else {}
-
-        # Prepare output data
-        total_stars = len(stargazers)
-        total_forks = len(forks)
-        total_issues = len(issues)
-        total_pull_requests = len(pull_requests)
 
         output_data = {
             "total_stars": total_stars,
@@ -274,7 +293,7 @@ def main():
     print(f"Errors: {error_count}")
 
     if error_count > 0:
-        print(f"\nERROR DETAILS:")
+        print("\nERROR DETAILS:")
         for result in results:
             if result["status"] == "error":
                 print(f"- {result['url']}: {result.get('reason', 'Unknown error')}")
@@ -287,7 +306,7 @@ def main():
         "pull_requests": sum(r.get("total_pull_requests", 0) for r in results if r["status"] == "success"),
     }
 
-    print(f"\nTOTAL STATISTICS:")
+    print("\nTOTAL STATISTICS:")
     print(f"Total stars collected: {total_stats['stars']:,}")
     print(f"Total forks collected: {total_stats['forks']:,}")
     print(f"Total issues collected: {total_stats['issues']:,}")
@@ -303,8 +322,8 @@ def main():
         print(f"\n❌ {error_count} repositories failed to process")
         sys.exit(1)
     else:
-        print(f"\n✅ All repositories processed successfully!")
-        print(f"\n📊 Resource usage optimized for GitHub Actions free plan")
+        print("\n✅ All repositories processed successfully!")
+        print("\n📊 Resource usage optimized for GitHub Actions free plan")
 
 
 if __name__ == "__main__":

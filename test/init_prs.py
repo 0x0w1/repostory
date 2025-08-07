@@ -201,7 +201,7 @@ def main():
         }
 
         # Save data
-        filename = fetcher.save_data(output_data, owner, repo)
+        fetcher.save_data(output_data, owner, repo)
 
         # Print summary
         print(f"Total pull requests fetched: {total_pull_requests}")

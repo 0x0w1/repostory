@@ -71,8 +71,13 @@ class GitHubFetcher:
 
             result = response.json()
             if "errors" in result:
-                print(f"GraphQL errors: {result['errors']}")
-                return None
+                errors = result["errors"]
+                for error in errors:
+                    if "type" in error and error["type"] == "RATE_LIMITED":
+                        raise Exception(f"Rate limit exceeded: {error.get('message', 'Unknown rate limit error')}")
+                    elif "message" in error and "API rate limit exceeded" in error["message"]:
+                        raise Exception(f"API rate limit exceeded: {error['message']}")
+                raise Exception(f"GraphQL errors: {errors}")
 
             # Debug: Print response structure for first query
             if variables and variables.get("cursor") is None:
@@ -82,8 +87,9 @@ class GitHubFetcher:
 
             return result.get("data")
         except requests.exceptions.RequestException as e:
-            print(f"Error executing query: {e}")
-            return None
+            if "rate limit" in str(e).lower():
+                raise Exception(f"Rate limit error: {e}")
+            raise Exception(f"Request error: {e}")
 
     def fetch_stargazers(self, owner, repo):
         """Fetch all stargazers using GraphQL pagination."""
@@ -102,27 +108,35 @@ class GitHubFetcher:
         cursor = None
         page = 1
 
-        while True:
-            data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
+        try:
+            while True:
+                data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
 
-            if not data or not data.get("repository"):
-                debug_print(f"DEBUG: No data or repository in response. Data: {data}", self.debug)
-                break
+                if not data or not data.get("repository"):
+                    if page == 1:  # First page failed
+                        raise Exception(f"Failed to fetch stargazers for {owner}/{repo}: No data received")
+                    debug_print(f"DEBUG: No data or repository in response. Data: {data}", self.debug)
+                    break
 
-            stargazers_data = data["repository"]["stargazers"]
-            edges = stargazers_data["edges"]
-            if not edges:
-                debug_print(f"DEBUG: No edges found in stargazers data", self.debug)
-                break
+                stargazers_data = data["repository"]["stargazers"]
+                edges = stargazers_data["edges"]
+                if not edges:
+                    debug_print("DEBUG: No edges found in stargazers data", self.debug)
+                    break
 
-            stargazers.extend(edges)
+                stargazers.extend(edges)
 
-            page_info = stargazers_data["pageInfo"]
-            if not page_info.get("hasNextPage"):
-                break
+                page_info = stargazers_data["pageInfo"]
+                if not page_info.get("hasNextPage"):
+                    break
 
-            cursor = page_info.get("endCursor")
-            page += 1
+                cursor = page_info.get("endCursor")
+                page += 1
+
+        except Exception as e:
+            if "rate limit" in str(e).lower():
+                raise Exception(f"Rate limit error while fetching stargazers for {owner}/{repo}: {e}")
+            raise Exception(f"Error fetching stargazers for {owner}/{repo}: {e}")
 
         return stargazers
 
@@ -143,24 +157,32 @@ class GitHubFetcher:
         cursor = None
         page = 1
 
-        while True:
-            data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
+        try:
+            while True:
+                data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
 
-            if not data or not data.get("repository"):
-                break
+                if not data or not data.get("repository"):
+                    if page == 1:  # First page failed
+                        raise Exception(f"Failed to fetch forks for {owner}/{repo}: No data received")
+                    break
 
-            edges = data["repository"]["forks"]["edges"]
-            if not edges:
-                break
+                edges = data["repository"]["forks"]["edges"]
+                if not edges:
+                    break
 
-            forks.extend(edges)
+                forks.extend(edges)
 
-            page_info = data["repository"]["forks"]["pageInfo"]
-            if not page_info.get("hasNextPage"):
-                break
+                page_info = data["repository"]["forks"]["pageInfo"]
+                if not page_info.get("hasNextPage"):
+                    break
 
-            cursor = page_info.get("endCursor")
-            page += 1
+                cursor = page_info.get("endCursor")
+                page += 1
+
+        except Exception as e:
+            if "rate limit" in str(e).lower():
+                raise Exception(f"Rate limit error while fetching forks for {owner}/{repo}: {e}")
+            raise Exception(f"Error fetching forks for {owner}/{repo}: {e}")
 
         return forks
 
@@ -192,11 +214,15 @@ class GitHubFetcher:
                 data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
 
                 if not data or not data.get("repository"):
+                    if page == 1:  # First page failed
+                        raise Exception(f"Failed to fetch issues for {owner}/{repo}: No data received")
                     print(f"WARNING: No issues data received for {owner}/{repo}")
                     break
 
                 repository_data = data["repository"]
                 if "issues" not in repository_data:
+                    if page == 1:  # First page failed
+                        raise Exception(f"Failed to fetch issues for {owner}/{repo}: Issues field not found")
                     print(f"WARNING: Issues field not found in repository data for {owner}/{repo}")
                     break
 
@@ -215,7 +241,9 @@ class GitHubFetcher:
                 cursor = page_info.get("endCursor")
                 page += 1
         except Exception as e:
-            print(f"ERROR: Failed to fetch issues for {owner}/{repo}: {e}")
+            if "rate limit" in str(e).lower():
+                raise Exception(f"Rate limit error while fetching issues for {owner}/{repo}: {e}")
+            raise Exception(f"Error fetching issues for {owner}/{repo}: {e}")
 
         return issues
 
@@ -248,11 +276,17 @@ class GitHubFetcher:
                 data = self.execute_query(query, {"owner": owner, "name": repo, "cursor": cursor})
 
                 if not data or not data.get("repository"):
+                    if page == 1:  # First page failed
+                        raise Exception(f"Failed to fetch pull requests for {owner}/{repo}: No data received")
                     print(f"WARNING: No pull requests data received for {owner}/{repo}")
                     break
 
                 repository_data = data["repository"]
                 if "pullRequests" not in repository_data:
+                    if page == 1:  # First page failed
+                        raise Exception(
+                            f"Failed to fetch pull requests for {owner}/{repo}: Pull requests field not found"
+                        )
                     print(f"WARNING: Pull requests field not found in repository data for {owner}/{repo}")
                     break
 
@@ -271,7 +305,9 @@ class GitHubFetcher:
                 cursor = page_info.get("endCursor")
                 page += 1
         except Exception as e:
-            print(f"ERROR: Failed to fetch pull requests for {owner}/{repo}: {e}")
+            if "rate limit" in str(e).lower():
+                raise Exception(f"Rate limit error while fetching pull requests for {owner}/{repo}: {e}")
+            raise Exception(f"Error fetching pull requests for {owner}/{repo}: {e}")
 
         return pull_requests
 
