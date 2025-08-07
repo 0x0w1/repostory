@@ -71,11 +71,11 @@ class GitHubFetcher:
 
             result = response.json()
             if "errors" in result:
-                errors = result['errors']
+                errors = result["errors"]
                 for error in errors:
-                    if 'type' in error and error['type'] == 'RATE_LIMITED':
+                    if "type" in error and error["type"] == "RATE_LIMITED":
                         raise Exception(f"Rate limit exceeded: {error.get('message', 'Unknown rate limit error')}")
-                    elif 'message' in error and 'API rate limit exceeded' in error['message']:
+                    elif "message" in error and "API rate limit exceeded" in error["message"]:
                         raise Exception(f"API rate limit exceeded: {error['message']}")
                 raise Exception(f"GraphQL errors: {errors}")
 
@@ -121,7 +121,7 @@ class GitHubFetcher:
                 stargazers_data = data["repository"]["stargazers"]
                 edges = stargazers_data["edges"]
                 if not edges:
-                    debug_print(f"DEBUG: No edges found in stargazers data", self.debug)
+                    debug_print("DEBUG: No edges found in stargazers data", self.debug)
                     break
 
                 stargazers.extend(edges)
@@ -284,7 +284,9 @@ class GitHubFetcher:
                 repository_data = data["repository"]
                 if "pullRequests" not in repository_data:
                     if page == 1:  # First page failed
-                        raise Exception(f"Failed to fetch pull requests for {owner}/{repo}: Pull requests field not found")
+                        raise Exception(
+                            f"Failed to fetch pull requests for {owner}/{repo}: Pull requests field not found"
+                        )
                     print(f"WARNING: Pull requests field not found in repository data for {owner}/{repo}")
                     break
 
