@@ -63,35 +63,66 @@ def get_repository_data(owner: str, repo: str, token: Optional[str] = None) -> O
         response.raise_for_status()
         repo_data = response.json()
 
-        # Get pull requests count
-        pulls_url = f"https://api.github.com/repos/{owner}/{repo}/pulls?state=all&per_page=1"
-        pulls_response = requests.get(pulls_url, headers=headers)
-        pulls_response.raise_for_status()
-
-        # Extract total count from Link header or use fallback
+        # Use GitHub GraphQL API for accurate counts with REST API fallback
         total_pulls = 0
-        if "Link" in pulls_response.headers:
-            link_header = pulls_response.headers["Link"]
-            # Parse last page number from Link header
-            import re
-
-            match = re.search(r'&page=(\d+)>; rel="last"', link_header)
-            if match:
-                total_pulls = int(match.group(1))
-
-        # Get issues count (GitHub API includes PRs in issues count, so we need to subtract)
-        issues_url = f"https://api.github.com/repos/{owner}/{repo}/issues?state=all&per_page=1"
-        issues_response = requests.get(issues_url, headers=headers)
-        issues_response.raise_for_status()
-
         total_issues = 0
-        if "Link" in issues_response.headers:
-            link_header = issues_response.headers["Link"]
-            match = re.search(r'&page=(\d+)>; rel="last"', link_header)
-            if match:
-                # Total issues from API includes PRs, so subtract PRs to get actual issues
-                total_issues_with_prs = int(match.group(1))
-                total_issues = max(0, total_issues_with_prs - total_pulls)
+        
+        # Get token if not provided
+        if not token:
+            token = get_github_token()
+        
+        if token and len(token.strip()) > 0:
+            try:
+                # Primary: Use GraphQL API for accurate counts
+                graphql_url = "https://api.github.com/graphql"
+                query = f"""{{
+                    repository(owner: "{owner}", name: "{repo}") {{
+                        issues(states: [OPEN, CLOSED]) {{
+                            totalCount
+                        }}
+                        pullRequests(states: [OPEN, CLOSED, MERGED]) {{
+                            totalCount
+                        }}
+                    }}
+                }}"""
+                
+                graphql_response = requests.post(
+                    graphql_url,
+                    json={"query": query},
+                    headers=headers
+                )
+                graphql_response.raise_for_status()
+                response_data = graphql_response.json()
+                
+                # Check for GraphQL errors
+                if "errors" in response_data:
+                    raise requests.exceptions.RequestException(f"GraphQL error: {response_data['errors']}")
+                
+                data = response_data.get("data", {}).get("repository", {})
+                total_issues = data.get("issues", {}).get("totalCount", 0)
+                total_pulls = data.get("pullRequests", {}).get("totalCount", 0)
+                
+            except requests.exceptions.RequestException:
+                # Fallback: Use Search API
+                try:
+                    search_prs_url = f"https://api.github.com/search/issues?q=repo:{owner}/{repo}+type:pr"
+                    prs_response = requests.get(search_prs_url, headers=headers)
+                    prs_response.raise_for_status()
+                    total_pulls = prs_response.json().get("total_count", 0)
+
+                    search_issues_url = f"https://api.github.com/search/issues?q=repo:{owner}/{repo}+type:issue"
+                    issues_response = requests.get(search_issues_url, headers=headers)
+                    issues_response.raise_for_status()
+                    total_issues = issues_response.json().get("total_count", 0)
+                    
+                except requests.exceptions.RequestException:
+                    # Final fallback: use repository data (only open issues, no PRs)
+                    total_issues = max(0, repo_data.get("open_issues_count", 0))
+                    total_pulls = 0
+        else:
+            # No token available, use basic repo data (only open issues)
+            total_issues = max(0, repo_data.get("open_issues_count", 0))
+            total_pulls = 0
 
         return {
             "name": repo,
