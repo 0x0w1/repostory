@@ -9,9 +9,10 @@ updates local JSON files, and generates README with current rankings.
 import json
 import os
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import requests
+from readme_generator import generate_readme_english, generate_readme_korean
 
 
 def load_repositories_config(filename: str = "repositories.json") -> List[str]:
@@ -35,16 +36,16 @@ def load_repositories_config(filename: str = "repositories.json") -> List[str]:
         # Filter URLs to only include those with existing data files
         existing_urls = []
         repo_data_dir = "repo_data"
-        
+
         if not os.path.exists(repo_data_dir):
             raise FileNotFoundError(f"Directory '{repo_data_dir}' not found")
-        
+
         for url in all_urls:
             try:
                 repo_path = url.replace("https://github.com/", "")
                 owner, repo = repo_path.split("/")
                 repo_file = f"{repo_data_dir}/{owner}_{repo}.json"
-                
+
                 if os.path.exists(repo_file):
                     existing_urls.append(url)
                 else:
@@ -93,11 +94,11 @@ def get_repository_data(owner: str, repo: str, token: Optional[str] = None) -> O
         # Use GitHub GraphQL API for accurate counts with REST API fallback
         total_pulls = 0
         total_issues = 0
-        
+
         # Get token if not provided
         if not token:
             token = get_github_token()
-        
+
         if token and len(token.strip()) > 0:
             try:
                 # Primary: Use GraphQL API for accurate counts
@@ -112,23 +113,19 @@ def get_repository_data(owner: str, repo: str, token: Optional[str] = None) -> O
                         }}
                     }}
                 }}"""
-                
-                graphql_response = requests.post(
-                    graphql_url,
-                    json={"query": query},
-                    headers=headers
-                )
+
+                graphql_response = requests.post(graphql_url, json={"query": query}, headers=headers)
                 graphql_response.raise_for_status()
                 response_data = graphql_response.json()
-                
+
                 # Check for GraphQL errors
                 if "errors" in response_data:
                     raise requests.exceptions.RequestException(f"GraphQL error: {response_data['errors']}")
-                
+
                 data = response_data.get("data", {}).get("repository", {})
                 total_issues = data.get("issues", {}).get("totalCount", 0)
                 total_pulls = data.get("pullRequests", {}).get("totalCount", 0)
-                
+
             except requests.exceptions.RequestException:
                 # Fallback: Use Search API
                 try:
@@ -141,7 +138,7 @@ def get_repository_data(owner: str, repo: str, token: Optional[str] = None) -> O
                     issues_response = requests.get(search_issues_url, headers=headers)
                     issues_response.raise_for_status()
                     total_issues = issues_response.json().get("total_count", 0)
-                    
+
                 except requests.exceptions.RequestException:
                     # Final fallback: use repository data (only open issues, no PRs)
                     total_issues = max(0, repo_data.get("open_issues_count", 0))
@@ -291,56 +288,6 @@ def fetch_all_repository_data(repo_urls: List[str]) -> List[Dict]:
     return all_repo_data
 
 
-def generate_readme(repo_data: List[Dict], output_file: str = "README.md") -> None:
-    """Generate README.md file from repository data."""
-    # Sort by stars (descending)
-    repo_data.sort(key=lambda x: x["stars"], reverse=True)
-
-    # Generic title for all repositories
-    title = "Public Repository History - All Categories"
-
-    header = f"""# {title}
-A list of popular github projects from all categories (ranked by stars automatically)
-
-## 📈 Current Rankings
-
-"""
-
-    with open(output_file, "w", encoding="utf-8") as f:
-        f.write(header)
-        f.write("| Project Name | Stars | Forks | Total Issues | Total PRs | Open Issues | Last Commit |\n")
-        f.write("| ------------ | ----- | ----- | ------------ | --------- | ----------- | ----------- |\n")
-
-        for project in repo_data:
-            # Format last commit date
-            if project["last_commit"]:
-                try:
-                    commit_date = datetime.fromisoformat(project["last_commit"].replace("Z", "+00:00")).strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
-                except (ValueError, TypeError):
-                    commit_date = "N/A"
-            else:
-                commit_date = "N/A"
-
-            f.write(
-                f"| [{project['name']}]({project['html_url']}) | "
-                f"{project['stars']} | "
-                f"{project['forks']} | "
-                f"{project.get('total_issues', 'N/A')} | "
-                f"{project.get('total_pull_requests', 'N/A')} | "
-                f"{project['open_issues']} | "
-                f"{commit_date} |\n"
-            )
-
-        # Add footer
-        timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-        f.write(f"\n*Last Automatic Update: {timestamp}*\n")
-        f.write("\n*Inspired by https://github.com/mingrammer/python-web-framework-stars*\n")
-
-    print(f"Generated {output_file} with {len(repo_data)} projects")
-
-
 def main():
     """Main execution function."""
     try:
@@ -355,9 +302,10 @@ def main():
             print("No repository data fetched. Exiting.")
             return
 
-        # Generate README
-        print("Generating README...")
-        generate_readme(repo_data)
+        # Generate both English and Korean README files
+        print("Generating README files...")
+        generate_readme_english(repo_data)
+        generate_readme_korean(repo_data)
 
         print("All tasks completed successfully!")
 

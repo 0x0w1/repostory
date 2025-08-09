@@ -390,7 +390,7 @@ def main():
         forks = None
         issues = None
         pull_requests = None
-        
+
         try:
             print("\n=== Fetching Stargazers ===")
             stargazers = fetcher.fetch_stargazers(owner, repo)
@@ -423,7 +423,7 @@ def main():
         if stargazers is None or forks is None or issues is None or pull_requests is None:
             print(f"ERROR: One or more fetch operations returned None for {owner}/{repo} - data collection failed")
             sys.exit(1)
-        
+
         # Group by date with fallback to empty dict
         stars_by_date = fetcher.group_by_date(stargazers, "starredAt") if stargazers else {}
         forks_by_date = fetcher.group_by_date(forks, "createdAt") if forks else {}
@@ -449,12 +449,12 @@ def main():
         }
 
         # Validate data before saving - ensure totals match expectations
-        if total_stars != repo_info['stargazerCount'] or total_forks != repo_info['forkCount']:
+        if total_stars != repo_info["stargazerCount"] or total_forks != repo_info["forkCount"]:
             print(f"WARNING: Data mismatch for {owner}/{repo}:")
             print(f"  API reports: {repo_info['stargazerCount']} stars, {repo_info['forkCount']} forks")
             print(f"  Fetched: {total_stars} stars, {total_forks} forks")
             print("This might indicate incomplete data fetch or API inconsistency")
-        
+
         # Save data only if validation passes
         try:
             fetcher.save_data(output_data, output_filename)
