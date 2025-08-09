@@ -132,5 +132,3 @@ uv run python/generate_history_from_repo_data.py
 | [circuits](https://github.com/circuits/circuits) | 317 | 56 | 147 | 190 | 42 | 2024-04-05 16:12:35 |
 
 *Last Automatic Update: 2025-08-09T10:56:34*
-
-*Inspired by https://github.com/mingrammer/python-web-framework-stars*
