@@ -14,23 +14,50 @@ from typing import Dict, List, Optional, Tuple
 import requests
 
 
-def load_repositories_config(filename: str = "repositories.json") -> Tuple[str, List[str]]:
-    """Load repository configuration from JSON file."""
+def load_repositories_config(filename: str = "repositories.json") -> List[str]:
+    """Load all repository URLs from JSON file and check for existing data files."""
     try:
         with open(filename, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        # Get the first key as category name and its URLs
         if not data:
             raise ValueError("Repository configuration is empty")
 
-        category = list(data.keys())[0]
-        urls = data[category]
+        # Collect all URLs from all categories
+        all_urls = []
+        for category, urls in data.items():
+            if urls:
+                all_urls.extend(urls)
 
-        if not urls:
-            raise ValueError(f"Repository list for '{category}' is empty")
+        if not all_urls:
+            raise ValueError("No repository URLs found in configuration")
 
-        return category, urls
+        # Filter URLs to only include those with existing data files
+        existing_urls = []
+        repo_data_dir = "repo_data"
+        
+        if not os.path.exists(repo_data_dir):
+            raise FileNotFoundError(f"Directory '{repo_data_dir}' not found")
+        
+        for url in all_urls:
+            try:
+                repo_path = url.replace("https://github.com/", "")
+                owner, repo = repo_path.split("/")
+                repo_file = f"{repo_data_dir}/{owner}_{repo}.json"
+                
+                if os.path.exists(repo_file):
+                    existing_urls.append(url)
+                else:
+                    print(f"Skipping {owner}/{repo}: No data file found at {repo_file}")
+            except ValueError:
+                print(f"Skipping invalid URL format: {url}")
+                continue
+
+        if not existing_urls:
+            raise ValueError("No repositories with existing data files found")
+
+        print(f"Found {len(existing_urls)} repositories with existing data files out of {len(all_urls)} total")
+        return existing_urls
 
     except FileNotFoundError:
         raise FileNotFoundError(f"File '{filename}' not found")
@@ -264,16 +291,16 @@ def fetch_all_repository_data(repo_urls: List[str]) -> List[Dict]:
     return all_repo_data
 
 
-def generate_readme(category: str, repo_data: List[Dict], output_file: str = "README.md") -> None:
+def generate_readme(repo_data: List[Dict], output_file: str = "README.md") -> None:
     """Generate README.md file from repository data."""
     # Sort by stars (descending)
     repo_data.sort(key=lambda x: x["stars"], reverse=True)
 
-    # Format category name for title
-    title = f"Public Repository History - {category.replace('-', ' ').title()}"
+    # Generic title for all repositories
+    title = "Public Repository History - All Categories"
 
     header = f"""# {title}
-A list of popular github projects related to {category.replace('-', ' ')} (ranked by stars automatically)
+A list of popular github projects from all categories (ranked by stars automatically)
 
 ## 📈 Current Rankings
 
@@ -317,9 +344,8 @@ A list of popular github projects related to {category.replace('-', ' ')} (ranke
 def main():
     """Main execution function."""
     try:
-        # Load repository configuration
-        category, repo_urls = load_repositories_config()
-        print(f"Loaded {len(repo_urls)} repository URLs for category: {category}")
+        # Load repository configuration for all categories with existing data files
+        repo_urls = load_repositories_config()
 
         # Fetch current data for all repositories
         print("Fetching current repository data from GitHub...")
@@ -331,7 +357,7 @@ def main():
 
         # Generate README
         print("Generating README...")
-        generate_readme(category, repo_data)
+        generate_readme(repo_data)
 
         print("All tasks completed successfully!")
 
