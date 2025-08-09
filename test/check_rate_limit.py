@@ -53,9 +53,9 @@ def check_rate_limit():
             if remaining == 0:
                 print("  Status: ❌ EXHAUSTED")
             elif remaining < limit * 0.1:
-                print(f"  Status: ⚠️  LOW ({remaining/limit*100:.1f}%)")
+                print(f"  Status: ⚠️  LOW ({remaining / limit * 100:.1f}%)")
             else:
-                print(f"  Status: ✅ OK ({remaining/limit*100:.1f}%)")
+                print(f"  Status: ✅ OK ({remaining / limit * 100:.1f}%)")
 
     except requests.exceptions.RequestException as e:
         print(f"Error checking rate limit: {e}")
