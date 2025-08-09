@@ -20,7 +20,13 @@
       "Bash(PYTHONPATH=test uv run python test/init_issues.py https://github.com/tiangolo/fastapi)",
       "Bash(for file in *.json)",
       "Bash(do echo \"=== $file ===\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(echo $VIRTUAL_ENV)",
+      "Bash(.venv/bin/python python/fetcher.py)",
+      "Bash(source:*)",
+      "Bash(echo $PATH)",
+      "Bash(/usr/bin/which:*)",
+      "Bash(PYTHONPATH=test uv run python test/init_issues.py https://github.com/vibora-io/vibora)"
     ],
     "deny": []
   }

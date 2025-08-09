@@ -14,23 +14,50 @@ from typing import Dict, List, Optional, Tuple
 import requests
 
 
-def load_repositories_config(filename: str = "repositories.json") -> Tuple[str, List[str]]:
-    """Load repository configuration from JSON file."""
+def load_repositories_config(filename: str = "repositories.json") -> List[str]:
+    """Load all repository URLs from JSON file and check for existing data files."""
     try:
         with open(filename, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        # Get the first key as category name and its URLs
         if not data:
             raise ValueError("Repository configuration is empty")
 
-        category = list(data.keys())[0]
-        urls = data[category]
+        # Collect all URLs from all categories
+        all_urls = []
+        for category, urls in data.items():
+            if urls:
+                all_urls.extend(urls)
 
-        if not urls:
-            raise ValueError(f"Repository list for '{category}' is empty")
+        if not all_urls:
+            raise ValueError("No repository URLs found in configuration")
 
-        return category, urls
+        # Filter URLs to only include those with existing data files
+        existing_urls = []
+        repo_data_dir = "repo_data"
+        
+        if not os.path.exists(repo_data_dir):
+            raise FileNotFoundError(f"Directory '{repo_data_dir}' not found")
+        
+        for url in all_urls:
+            try:
+                repo_path = url.replace("https://github.com/", "")
+                owner, repo = repo_path.split("/")
+                repo_file = f"{repo_data_dir}/{owner}_{repo}.json"
+                
+                if os.path.exists(repo_file):
+                    existing_urls.append(url)
+                else:
+                    print(f"Skipping {owner}/{repo}: No data file found at {repo_file}")
+            except ValueError:
+                print(f"Skipping invalid URL format: {url}")
+                continue
+
+        if not existing_urls:
+            raise ValueError("No repositories with existing data files found")
+
+        print(f"Found {len(existing_urls)} repositories with existing data files out of {len(all_urls)} total")
+        return existing_urls
 
     except FileNotFoundError:
         raise FileNotFoundError(f"File '{filename}' not found")
@@ -63,35 +90,66 @@ def get_repository_data(owner: str, repo: str, token: Optional[str] = None) -> O
         response.raise_for_status()
         repo_data = response.json()
 
-        # Get pull requests count
-        pulls_url = f"https://api.github.com/repos/{owner}/{repo}/pulls?state=all&per_page=1"
-        pulls_response = requests.get(pulls_url, headers=headers)
-        pulls_response.raise_for_status()
-
-        # Extract total count from Link header or use fallback
+        # Use GitHub GraphQL API for accurate counts with REST API fallback
         total_pulls = 0
-        if "Link" in pulls_response.headers:
-            link_header = pulls_response.headers["Link"]
-            # Parse last page number from Link header
-            import re
-
-            match = re.search(r'&page=(\d+)>; rel="last"', link_header)
-            if match:
-                total_pulls = int(match.group(1))
-
-        # Get issues count (GitHub API includes PRs in issues count, so we need to subtract)
-        issues_url = f"https://api.github.com/repos/{owner}/{repo}/issues?state=all&per_page=1"
-        issues_response = requests.get(issues_url, headers=headers)
-        issues_response.raise_for_status()
-
         total_issues = 0
-        if "Link" in issues_response.headers:
-            link_header = issues_response.headers["Link"]
-            match = re.search(r'&page=(\d+)>; rel="last"', link_header)
-            if match:
-                # Total issues from API includes PRs, so subtract PRs to get actual issues
-                total_issues_with_prs = int(match.group(1))
-                total_issues = max(0, total_issues_with_prs - total_pulls)
+        
+        # Get token if not provided
+        if not token:
+            token = get_github_token()
+        
+        if token and len(token.strip()) > 0:
+            try:
+                # Primary: Use GraphQL API for accurate counts
+                graphql_url = "https://api.github.com/graphql"
+                query = f"""{{
+                    repository(owner: "{owner}", name: "{repo}") {{
+                        issues(states: [OPEN, CLOSED]) {{
+                            totalCount
+                        }}
+                        pullRequests(states: [OPEN, CLOSED, MERGED]) {{
+                            totalCount
+                        }}
+                    }}
+                }}"""
+                
+                graphql_response = requests.post(
+                    graphql_url,
+                    json={"query": query},
+                    headers=headers
+                )
+                graphql_response.raise_for_status()
+                response_data = graphql_response.json()
+                
+                # Check for GraphQL errors
+                if "errors" in response_data:
+                    raise requests.exceptions.RequestException(f"GraphQL error: {response_data['errors']}")
+                
+                data = response_data.get("data", {}).get("repository", {})
+                total_issues = data.get("issues", {}).get("totalCount", 0)
+                total_pulls = data.get("pullRequests", {}).get("totalCount", 0)
+                
+            except requests.exceptions.RequestException:
+                # Fallback: Use Search API
+                try:
+                    search_prs_url = f"https://api.github.com/search/issues?q=repo:{owner}/{repo}+type:pr"
+                    prs_response = requests.get(search_prs_url, headers=headers)
+                    prs_response.raise_for_status()
+                    total_pulls = prs_response.json().get("total_count", 0)
+
+                    search_issues_url = f"https://api.github.com/search/issues?q=repo:{owner}/{repo}+type:issue"
+                    issues_response = requests.get(search_issues_url, headers=headers)
+                    issues_response.raise_for_status()
+                    total_issues = issues_response.json().get("total_count", 0)
+                    
+                except requests.exceptions.RequestException:
+                    # Final fallback: use repository data (only open issues, no PRs)
+                    total_issues = max(0, repo_data.get("open_issues_count", 0))
+                    total_pulls = 0
+        else:
+            # No token available, use basic repo data (only open issues)
+            total_issues = max(0, repo_data.get("open_issues_count", 0))
+            total_pulls = 0
 
         return {
             "name": repo,
@@ -233,16 +291,16 @@ def fetch_all_repository_data(repo_urls: List[str]) -> List[Dict]:
     return all_repo_data
 
 
-def generate_readme(category: str, repo_data: List[Dict], output_file: str = "README.md") -> None:
+def generate_readme(repo_data: List[Dict], output_file: str = "README.md") -> None:
     """Generate README.md file from repository data."""
     # Sort by stars (descending)
     repo_data.sort(key=lambda x: x["stars"], reverse=True)
 
-    # Format category name for title
-    title = f"Public Repository History - {category.replace('-', ' ').title()}"
+    # Generic title for all repositories
+    title = "Public Repository History - All Categories"
 
     header = f"""# {title}
-A list of popular github projects related to {category.replace('-', ' ')} (ranked by stars automatically)
+A list of popular github projects from all categories (ranked by stars automatically)
 
 ## 📈 Current Rankings
 
@@ -286,9 +344,8 @@ A list of popular github projects related to {category.replace('-', ' ')} (ranke
 def main():
     """Main execution function."""
     try:
-        # Load repository configuration
-        category, repo_urls = load_repositories_config()
-        print(f"Loaded {len(repo_urls)} repository URLs for category: {category}")
+        # Load repository configuration for all categories with existing data files
+        repo_urls = load_repositories_config()
 
         # Fetch current data for all repositories
         print("Fetching current repository data from GitHub...")
@@ -300,7 +357,7 @@ def main():
 
         # Generate README
         print("Generating README...")
-        generate_readme(category, repo_data)
+        generate_readme(repo_data)
 
         print("All tasks completed successfully!")
 

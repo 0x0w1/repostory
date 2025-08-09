@@ -104,41 +104,61 @@ def process_repository(url, output_dir, token, delay=0, debug=False):
 
         # Fetch all data with delays between calls for GitHub Actions
         # If any fetch fails due to rate limiting or errors, don't create the file
+        stargazers = None
+        forks = None
+        issues = None
+        pull_requests = None
+        
         try:
             debug_print(f"[FETCH] {owner}/{repo} - Fetching stargazers...", debug)
             stargazers = fetcher.fetch_stargazers(owner, repo)
             time.sleep(api_delay)
+        except Exception as e:
+            error_msg = f"Error fetching stargazers for {owner}/{repo}: {e}"
+            print(f"[ERROR] {error_msg}")
+            return {"url": url, "status": "error", "reason": error_msg}
 
+        try:
             debug_print(f"[FETCH] {owner}/{repo} - Fetching forks...", debug)
             forks = fetcher.fetch_forks(owner, repo)
             time.sleep(api_delay)
+        except Exception as e:
+            error_msg = f"Error fetching forks for {owner}/{repo}: {e}"
+            print(f"[ERROR] {error_msg}")
+            return {"url": url, "status": "error", "reason": error_msg}
 
+        try:
             debug_print(f"[FETCH] {owner}/{repo} - Fetching issues...", debug)
             issues = fetcher.fetch_issues(owner, repo)
             time.sleep(api_delay)
+        except Exception as e:
+            error_msg = f"Error fetching issues for {owner}/{repo}: {e}"
+            print(f"[ERROR] {error_msg}")
+            return {"url": url, "status": "error", "reason": error_msg}
 
+        try:
             debug_print(f"[FETCH] {owner}/{repo} - Fetching pull requests...", debug)
             pull_requests = fetcher.fetch_pull_requests(owner, repo)
         except Exception as e:
-            if "rate limit" in str(e).lower():
-                error_msg = f"Rate limit error while fetching data for {owner}/{repo}: {e}"
-                print(f"[ERROR] {error_msg}")
-                return {"url": url, "status": "error", "reason": error_msg}
-            else:
-                error_msg = f"API error while fetching data for {owner}/{repo}: {e}"
-                print(f"[ERROR] {error_msg}")
-                return {"url": url, "status": "error", "reason": error_msg}
+            error_msg = f"Error fetching pull requests for {owner}/{repo}: {e}"
+            print(f"[ERROR] {error_msg}")
+            return {"url": url, "status": "error", "reason": error_msg}
 
-        # Verify we have valid data - prevent creating files with all zeros
-        total_stars = len(stargazers)
-        total_forks = len(forks)
-        total_issues = len(issues)
-        total_pull_requests = len(pull_requests)
-
-        # Check if all totals are zero, which might indicate API errors
-        if total_stars == 0 and total_forks == 0 and total_issues == 0 and total_pull_requests == 0:
+        # Verify we have valid data - prevent creating files with suspicious data
+        # Ensure all fetch operations returned valid data (not None)
+        if stargazers is None or forks is None or issues is None or pull_requests is None:
+            error_msg = f"One or more fetch operations returned None for {owner}/{repo} - data collection failed"
+            print(f"[ERROR] {error_msg}")
+            return {"url": url, "status": "error", "reason": error_msg}
+        
+        # Check if basic repository info (stars/forks) are missing, which indicates API issues
+        raw_stars_count = len(stargazers)
+        raw_forks_count = len(forks)
+        
+        # For new repositories, having zero issues/PRs is normal, but zero stars/forks is suspicious
+        if raw_stars_count == 0 and raw_forks_count == 0:
             error_msg = (
-                f"All data categories returned zero for {owner}/{repo} - possible API error or empty repository"
+                f"Repository {owner}/{repo} has zero stars and forks - possible API error or inaccessible repository"
             )
             print(f"[WARNING] {error_msg}")
             return {"url": url, "status": "error", "reason": error_msg}
@@ -148,6 +168,12 @@ def process_repository(url, output_dir, token, delay=0, debug=False):
         forks_by_date = fetcher.group_by_date(forks, "createdAt") if forks else {}
         issues_by_date = fetcher.group_by_date(issues, "createdAt") if issues else {}
         pull_requests_by_date = fetcher.group_by_date(pull_requests, "createdAt") if pull_requests else {}
+        
+        # Calculate totals from grouped data to ensure accuracy
+        total_stars = sum(stars_by_date.values()) if stars_by_date else 0
+        total_forks = sum(forks_by_date.values()) if forks_by_date else 0
+        total_issues = sum(issues_by_date.values()) if issues_by_date else 0
+        total_pull_requests = sum(pull_requests_by_date.values()) if pull_requests_by_date else 0
 
         output_data = {
             "total_stars": total_stars,
@@ -161,9 +187,14 @@ def process_repository(url, output_dir, token, delay=0, debug=False):
             "pull_requests_by_date": dict(sorted(pull_requests_by_date.items())),
         }
 
-        # Save data
+        # Save data only if all operations succeeded
         output_filename = f"{output_dir}/{owner}_{repo}.json"
-        fetcher.save_data(output_data, output_filename)
+        try:
+            fetcher.save_data(output_data, output_filename)
+        except Exception as e:
+            error_msg = f"Failed to save data for {owner}/{repo}: {e}"
+            print(f"[ERROR] {error_msg}")
+            return {"url": url, "status": "error", "reason": error_msg}
 
         debug_print(f"[SUCCESS] {owner}/{repo} - Stars: {total_stars}, Forks: {total_forks}", debug)
         return {
