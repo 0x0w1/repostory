@@ -108,7 +108,7 @@ def process_repository(url, output_dir, token, delay=0, debug=False):
         forks = None
         issues = None
         pull_requests = None
-        
+
         try:
             debug_print(f"[FETCH] {owner}/{repo} - Fetching stargazers...", debug)
             stargazers = fetcher.fetch_stargazers(owner, repo)
@@ -150,11 +150,11 @@ def process_repository(url, output_dir, token, delay=0, debug=False):
             error_msg = f"One or more fetch operations returned None for {owner}/{repo} - data collection failed"
             print(f"[ERROR] {error_msg}")
             return {"url": url, "status": "error", "reason": error_msg}
-        
+
         # Check if basic repository info (stars/forks) are missing, which indicates API issues
         raw_stars_count = len(stargazers)
         raw_forks_count = len(forks)
-        
+
         # For new repositories, having zero issues/PRs is normal, but zero stars/forks is suspicious
         if raw_stars_count == 0 and raw_forks_count == 0:
             error_msg = (
@@ -168,7 +168,7 @@ def process_repository(url, output_dir, token, delay=0, debug=False):
         forks_by_date = fetcher.group_by_date(forks, "createdAt") if forks else {}
         issues_by_date = fetcher.group_by_date(issues, "createdAt") if issues else {}
         pull_requests_by_date = fetcher.group_by_date(pull_requests, "createdAt") if pull_requests else {}
-        
+
         # Calculate totals from grouped data to ensure accuracy
         total_stars = sum(stars_by_date.values()) if stars_by_date else 0
         total_forks = sum(forks_by_date.values()) if forks_by_date else 0
@@ -299,7 +299,7 @@ def main():
                 completed_processing = len(results) - len(skipped_repos)
                 total_processing = len(repos_to_process)
                 print(
-                    f"[PROGRESS] {completed_processing}/{total_processing} processed ({completed_processing/total_processing*100:.1f}%)"
+                    f"[PROGRESS] {completed_processing}/{total_processing} processed ({completed_processing / total_processing * 100:.1f}%)"
                 )
 
             except Exception as e:
@@ -309,9 +309,9 @@ def main():
     end_time = time.time()
 
     # Print summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("BATCH PROCESSING SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Total time: {end_time - start_time:.2f} seconds")
     print(f"Total repositories: {len(all_repos)}")
 
@@ -346,7 +346,7 @@ def main():
     # Performance summary for GitHub Actions
     avg_time_per_repo = (end_time - start_time) / len(all_repos) if all_repos else 0
     print(f"Average time per repository: {avg_time_per_repo:.2f} seconds")
-    print(f"Estimated GitHub Actions minutes used: {(end_time - start_time)/60:.1f} minutes")
+    print(f"Estimated GitHub Actions minutes used: {(end_time - start_time) / 60:.1f} minutes")
 
     # Exit with error code if any repositories failed
     if error_count > 0:
