@@ -75,55 +75,55 @@ uv run python/generate_history_from_repo_data.py
 
 | Project Name | Stars | Forks | Total Issues | Total PRs | Open Issues | Last Commit |
 | ------------ | ----- | ----- | ------------ | --------- | ----------- | ----------- |
-| [tensorflow](https://github.com/tensorflow/tensorflow) | 191635 | 74827 | 40788 | 57493 | 1672 | 2025-09-15 00:43:46 |
-| [transformers](https://github.com/huggingface/transformers) | 149768 | 30397 | 17920 | 22381 | 1999 | 2025-09-14 16:42:50 |
-| [pytorch](https://github.com/pytorch/pytorch) | 93170 | 25271 | 53737 | 108742 | 17103 | 2025-09-15 01:50:04 |
-| [fastapi](https://github.com/fastapi/fastapi) | 89469 | 7871 | 3468 | 4715 | 245 | 2025-09-12 08:21:56 |
-| [django](https://github.com/django/django) | 84988 | 32956 | 0 | 19799 | 374 | 2025-09-14 19:12:39 |
-| [flask](https://github.com/pallets/flask) | 70356 | 16531 | 2695 | 2702 | 9 | 2025-09-12 21:52:55 |
-| [cpython](https://github.com/python/cpython) | 68866 | 32865 | 73596 | 64391 | 9345 | 2025-09-14 22:47:14 |
-| [keras](https://github.com/keras-team/keras) | 63407 | 19623 | 12544 | 8335 | 270 | 2025-09-11 18:42:15 |
-| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 63343 | 26232 | 11707 | 19348 | 2168 | 2025-09-12 12:39:28 |
-| [pandas](https://github.com/pandas-dev/pandas) | 46577 | 18913 | 27709 | 34582 | 3663 | 2025-09-13 06:22:04 |
-| [ray](https://github.com/ray-project/ray) | 38926 | 6796 | 21088 | 35081 | 3056 | 2025-09-15 00:28:37 |
+| [tensorflow](https://github.com/tensorflow/tensorflow) | 191643 | 74828 | 40791 | 57530 | 1662 | 2025-09-16 01:44:04 |
+| [transformers](https://github.com/huggingface/transformers) | 149835 | 30406 | 17922 | 22401 | 1992 | 2025-09-16 00:47:48 |
+| [pytorch](https://github.com/pytorch/pytorch) | 93199 | 25291 | 53761 | 108820 | 17119 | 2025-09-16 01:53:20 |
+| [fastapi](https://github.com/fastapi/fastapi) | 89496 | 7874 | 3468 | 4716 | 246 | 2025-09-15 17:36:07 |
+| [django](https://github.com/django/django) | 85000 | 32966 | 0 | 19803 | 373 | 2025-09-16 01:14:50 |
+| [flask](https://github.com/pallets/flask) | 70362 | 16532 | 2695 | 2702 | 9 | 2025-09-12 21:52:55 |
+| [cpython](https://github.com/python/cpython) | 68878 | 32874 | 73607 | 64437 | 9337 | 2025-09-15 22:53:51 |
+| [keras](https://github.com/keras-team/keras) | 63406 | 19622 | 12546 | 8336 | 267 | 2025-09-15 21:01:25 |
+| [scikit-learn](https://github.com/scikit-learn/scikit-learn) | 63350 | 26236 | 11710 | 19355 | 2167 | 2025-09-15 08:31:28 |
+| [pandas](https://github.com/pandas-dev/pandas) | 46585 | 18924 | 27712 | 34586 | 3656 | 2025-09-15 22:05:54 |
+| [ray](https://github.com/ray-project/ray) | 38945 | 6800 | 21098 | 35120 | 3083 | 2025-09-16 01:12:28 |
 | [gym](https://github.com/openai/gym) | 36510 | 8692 | 1840 | 1466 | 130 | 2024-10-11 20:07:05 |
-| [spaCy](https://github.com/explosion/spaCy) | 32478 | 4578 | 5721 | 4069 | 204 | 2025-05-28 15:28:05 |
-| [numpy](https://github.com/numpy/numpy) | 30398 | 11348 | 13541 | 16153 | 2367 | 2025-09-14 16:58:54 |
-| [django-rest-framework](https://github.com/encode/django-rest-framework) | 29468 | 7004 | 3945 | 4831 | 101 | 2025-09-08 19:44:29 |
-| [celery](https://github.com/celery/celery) | 27190 | 4842 | 5161 | 3654 | 755 | 2025-09-15 00:46:40 |
-| [dash](https://github.com/plotly/dash) | 24049 | 2200 | 1992 | 1329 | 561 | 2025-09-11 22:46:09 |
-| [tornado](https://github.com/tornadoweb/tornado) | 22180 | 5538 | 1852 | 1674 | 209 | 2025-08-21 14:14:13 |
-| [matplotlib](https://github.com/matplotlib/matplotlib) | 21694 | 7999 | 10981 | 19534 | 1651 | 2025-09-11 21:18:41 |
-| [micropython](https://github.com/micropython/micropython) | 20820 | 8427 | 5807 | 7179 | 1783 | 2025-09-11 04:26:10 |
-| [RustPython](https://github.com/RustPython/RustPython) | 20516 | 1343 | 1220 | 4864 | 441 | 2025-09-13 12:25:48 |
-| [sanic](https://github.com/sanic-org/sanic) | 18493 | 1581 | 1450 | 1627 | 145 | 2025-09-14 20:50:11 |
-| [plotly.py](https://github.com/plotly/plotly.py) | 17728 | 2708 | 3250 | 1950 | 721 | 2025-09-12 15:13:22 |
-| [aiohttp](https://github.com/aio-libs/aiohttp) | 15983 | 2122 | 3145 | 8062 | 275 | 2025-09-12 10:28:26 |
-| [httpx](https://github.com/encode/httpx) | 14549 | 955 | 918 | 1724 | 104 | 2025-09-12 11:19:51 |
-| [scipy](https://github.com/scipy/scipy) | 14022 | 5473 | 11026 | 12580 | 1766 | 2025-09-14 16:18:44 |
-| [dask](https://github.com/dask/dask) | 13484 | 1797 | 5436 | 6342 | 1202 | 2025-09-10 10:09:44 |
+| [spaCy](https://github.com/explosion/spaCy) | 32480 | 4579 | 5722 | 4069 | 205 | 2025-05-28 15:28:05 |
+| [numpy](https://github.com/numpy/numpy) | 30402 | 11351 | 13541 | 16154 | 2360 | 2025-09-15 23:54:56 |
+| [django-rest-framework](https://github.com/encode/django-rest-framework) | 29467 | 7003 | 3945 | 4831 | 100 | 2025-09-15 19:45:43 |
+| [celery](https://github.com/celery/celery) | 27194 | 4842 | 5161 | 3655 | 756 | 2025-09-15 16:48:26 |
+| [dash](https://github.com/plotly/dash) | 24051 | 2200 | 1993 | 1330 | 560 | 2025-09-15 23:23:01 |
+| [tornado](https://github.com/tornadoweb/tornado) | 22183 | 5538 | 1852 | 1674 | 209 | 2025-08-21 14:14:13 |
+| [matplotlib](https://github.com/matplotlib/matplotlib) | 21694 | 8000 | 10982 | 19537 | 1627 | 2025-09-15 19:02:31 |
+| [micropython](https://github.com/micropython/micropython) | 20820 | 8427 | 5811 | 7183 | 1785 | 2025-09-16 01:31:20 |
+| [RustPython](https://github.com/RustPython/RustPython) | 20518 | 1344 | 1220 | 4868 | 443 | 2025-09-16 00:35:08 |
+| [sanic](https://github.com/sanic-org/sanic) | 18491 | 1579 | 1450 | 1627 | 145 | 2025-09-14 20:50:11 |
+| [plotly.py](https://github.com/plotly/plotly.py) | 17728 | 2708 | 3251 | 1951 | 720 | 2025-09-15 14:11:49 |
+| [aiohttp](https://github.com/aio-libs/aiohttp) | 15988 | 2123 | 3145 | 8068 | 273 | 2025-09-15 12:57:39 |
+| [httpx](https://github.com/encode/httpx) | 14550 | 955 | 918 | 1724 | 104 | 2025-09-12 11:19:51 |
+| [scipy](https://github.com/scipy/scipy) | 14024 | 5475 | 11026 | 12583 | 1768 | 2025-09-15 23:24:09 |
+| [dask](https://github.com/dask/dask) | 13484 | 1797 | 5437 | 6344 | 1201 | 2025-09-15 22:03:20 |
 | [seaborn](https://github.com/mwaskom/seaborn) | 13434 | 2033 | 2626 | 1148 | 187 | 2025-07-10 13:20:45 |
-| [starlette](https://github.com/Kludex/starlette) | 11454 | 1038 | 753 | 1703 | 49 | 2025-09-13 10:21:58 |
-| [uvloop](https://github.com/MagicStack/uvloop) | 11250 | 573 | 388 | 289 | 142 | 2025-04-17 15:20:26 |
-| [sqlalchemy](https://github.com/sqlalchemy/sqlalchemy) | 10887 | 1580 | 8083 | 981 | 233 | 2025-09-13 13:55:32 |
-| [falcon](https://github.com/falconry/falcon) | 9716 | 959 | 1099 | 1368 | 158 | 2025-09-10 04:12:15 |
+| [starlette](https://github.com/Kludex/starlette) | 11457 | 1038 | 753 | 1704 | 49 | 2025-09-13 10:21:58 |
+| [uvloop](https://github.com/MagicStack/uvloop) | 11251 | 573 | 388 | 289 | 142 | 2025-04-17 15:20:26 |
+| [sqlalchemy](https://github.com/sqlalchemy/sqlalchemy) | 10892 | 1580 | 8084 | 982 | 231 | 2025-09-15 21:56:02 |
+| [falcon](https://github.com/falconry/falcon) | 9717 | 959 | 1099 | 1368 | 158 | 2025-09-10 04:12:15 |
 | [bottle](https://github.com/bottlepy/bottle) | 8658 | 1486 | 855 | 622 | 284 | 2025-09-13 12:31:44 |
-| [django-ninja](https://github.com/vitalik/django-ninja) | 8532 | 522 | 942 | 434 | 410 | 2025-09-01 14:55:27 |
-| [hug](https://github.com/hugapi/hug) | 6894 | 388 | 465 | 463 | 186 | 2024-07-04 14:37:30 |
-| [trio](https://github.com/python-trio/trio) | 6857 | 367 | 867 | 2449 | 309 | 2025-09-10 06:28:43 |
+| [django-ninja](https://github.com/vitalik/django-ninja) | 8536 | 523 | 942 | 434 | 409 | 2025-09-01 14:55:27 |
+| [hug](https://github.com/hugapi/hug) | 6895 | 388 | 465 | 463 | 186 | 2024-07-04 14:37:30 |
+| [trio](https://github.com/python-trio/trio) | 6858 | 367 | 867 | 2450 | 309 | 2025-09-15 21:35:35 |
 | [eve](https://github.com/pyeve/eve) | 6734 | 746 | 978 | 576 | 31 | 2025-08-31 06:07:38 |
 | [vibora](https://github.com/vibora-io/vibora) | 5632 | 301 | 0 | 103 | 140 | 2020-12-23 01:00:55 |
-| [tortoise-orm](https://github.com/tortoise/tortoise-orm) | 5286 | 437 | 1191 | 713 | 499 | 2025-08-27 04:27:55 |
-| [opencv-python](https://github.com/opencv/opencv-python) | 4981 | 938 | 868 | 260 | 165 | 2025-07-30 13:23:12 |
-| [pyramid](https://github.com/Pylons/pyramid) | 4047 | 889 | 1061 | 2719 | 89 | 2025-09-04 12:08:14 |
+| [tortoise-orm](https://github.com/tortoise/tortoise-orm) | 5290 | 437 | 1192 | 713 | 500 | 2025-08-27 04:27:55 |
+| [opencv-python](https://github.com/opencv/opencv-python) | 4982 | 938 | 869 | 260 | 166 | 2025-07-30 13:23:12 |
+| [pyramid](https://github.com/Pylons/pyramid) | 4046 | 889 | 1061 | 2719 | 89 | 2025-09-04 12:08:14 |
 | [databases](https://github.com/encode/databases) | 3933 | 263 | 319 | 211 | 133 | 2024-05-21 19:58:17 |
-| [alembic](https://github.com/sqlalchemy/alembic) | 3602 | 291 | 1157 | 196 | 116 | 2025-09-08 12:14:54 |
-| [quart](https://github.com/pallets/quart) | 3447 | 188 | 277 | 122 | 62 | 2025-09-01 18:49:41 |
-| [ironpython3](https://github.com/IronLanguages/ironpython3) | 2685 | 303 | 649 | 1261 | 306 | 2025-07-17 01:58:34 |
-| [masonite](https://github.com/MasoniteFramework/masonite) | 2306 | 131 | 426 | 392 | 21 | 2025-03-25 15:52:44 |
-| [anyio](https://github.com/agronholm/anyio) | 2207 | 163 | 401 | 508 | 66 | 2025-09-14 16:56:36 |
+| [alembic](https://github.com/sqlalchemy/alembic) | 3606 | 291 | 1157 | 196 | 116 | 2025-09-08 12:14:54 |
+| [quart](https://github.com/pallets/quart) | 3449 | 188 | 277 | 122 | 62 | 2025-09-01 18:49:41 |
+| [ironpython3](https://github.com/IronLanguages/ironpython3) | 2686 | 303 | 649 | 1261 | 306 | 2025-07-17 01:58:34 |
+| [masonite](https://github.com/MasoniteFramework/masonite) | 2307 | 131 | 426 | 392 | 21 | 2025-03-25 15:52:44 |
+| [anyio](https://github.com/agronholm/anyio) | 2210 | 163 | 401 | 509 | 67 | 2025-09-15 17:46:56 |
 | [web2py](https://github.com/web2py/web2py) | 2153 | 909 | 1077 | 1458 | 369 | 2025-09-13 16:04:00 |
-| [cherrypy](https://github.com/cherrypy/cherrypy) | 1921 | 369 | 1780 | 264 | 261 | 2025-09-08 17:38:35 |
+| [cherrypy](https://github.com/cherrypy/cherrypy) | 1921 | 369 | 1780 | 264 | 261 | 2025-09-15 17:40:35 |
 | [pypy](https://github.com/pypy/pypy) | 1497 | 86 | 5143 | 168 | 734 | 2025-08-25 15:57:04 |
 | [jython](https://github.com/jython/jython) | 1431 | 220 | 281 | 113 | 100 | 2025-05-04 16:52:25 |
 | [tg2](https://github.com/TurboGears/tg2) | 811 | 81 | 100 | 36 | 13 | 2025-02-18 22:52:59 |
@@ -131,6 +131,6 @@ uv run python/generate_history_from_repo_data.py
 | [morepath](https://github.com/morepath/morepath) | 396 | 37 | 446 | 110 | 77 | 2025-06-23 17:01:19 |
 | [circuits](https://github.com/circuits/circuits) | 317 | 56 | 147 | 190 | 42 | 2024-04-05 16:12:35 |
 
-*Last Automatic Update: 2025-09-15T02:02:32*
+*Last Automatic Update: 2025-09-16T01:53:42*
 
 *Inspired by https://github.com/mingrammer/python-web-framework-stars*
